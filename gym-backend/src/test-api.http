@@ -1,0 +1,62 @@
+### Variables
+@baseUrl = http://localhost:3000
+@token = tu_token_aqui_despues_del_login
+
+### 1. Probar servidor
+GET {{baseUrl}}
+
+### 2. Login del dueño
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@migym.com",
+  "password": "admin123"
+}
+
+### 3. Verificar token (reemplazar TOKEN con el que obtuviste)
+GET {{baseUrl}}/api/auth/verify
+Authorization: Bearer {{token}}
+
+### 4. Obtener estadísticas
+GET {{baseUrl}}/api/clients/stats
+Authorization: Bearer {{token}}
+
+### 5. Crear cliente
+POST {{baseUrl}}/api/clients
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nombre": "Juan",
+  "apellido": "Pérez",
+  "email": "juan@gmail.com",
+  "documento": "12345678",
+  "telefono": "+54911234567",
+  "montoMensual": 3500
+}
+
+### 6. Obtener todos los clientes
+GET {{baseUrl}}/api/clients?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 7. Buscar clientes
+GET {{baseUrl}}/api/clients?search=juan
+Authorization: Bearer {{token}}
+
+### 8. Filtrar por estado
+GET {{baseUrl}}/api/clients?status=pagado
+Authorization: Bearer {{token}}
+
+### 9. Marcar cliente como pagado (reemplazar ID)
+PUT {{baseUrl}}/api/clients/CLIENTE_ID/payment
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "estadoPago": "pagado"
+}
+
+### 10. Obtener pagos vencidos
+GET {{baseUrl}}/api/payments/overdue
+Authorization: Bearer {{token}}
