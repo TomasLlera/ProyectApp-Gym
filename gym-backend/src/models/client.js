@@ -1,86 +1,71 @@
-// src/models/Client.js
 const mongoose = require('mongoose');
 
 const clientSchema = new mongoose.Schema({
-  nombre: {
-    type: String,
-    required: [true, 'El nombre es obligatorio'],
-    trim: true,
-    maxLength: [50, 'El nombre no puede tener más de 50 caracteres']
+  nombre: { type: String, required: true },
+  apellido: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  documento: { type: String, required: true, unique: true },
+  telefono: { type: String },
+
+  // NUEVOS CAMPOS:
+  tipoPlan: { 
+    type: String, 
+    enum: ['diario', 'semanal', 'quincenal', 'mensual', 'anual'],
+    default: 'mensual'
   },
-  apellido: {
-    type: String,
-    required: [true, 'El apellido es obligatorio'],
-    trim: true,
-    maxLength: [50, 'El apellido no puede tener más de 50 caracteres']
-  },
-  email: {
-    type: String,
-    required: [true, 'El email es obligatorio'],
-    unique: true,
-    lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Email inválido']
-  },
-  documento: {
-    type: String,
-    required: [true, 'El documento es obligatorio'],
-    unique: true,
-    trim: true
-  },
-  telefono: {
-    type: String,
-    trim: true
-  },
-  fechaNacimiento: {
-    type: Date
-  },
-  fechaRegistro: {
-    type: Date,
-    default: Date.now
-  },
+  montoMensual: { type: Number, required: true },
+  fechaVencimiento: { type: Date }, // Próxima fecha de vencimiento
+  
   estadoPago: {
     type: String,
     enum: ['pagado', 'vencido', 'pendiente'],
     default: 'pendiente'
   },
-  fechaUltimoPago: {
-    type: Date
-  },
-  montoMensual: {
-    type: Number,
-    default: 3500,
-    min: [0, 'El monto no puede ser negativo']
-  },
-  activo: {
-    type: Boolean,
-    default: true
-  },
-  notas: {
-    type: String,
-    maxLength: 500
-  }
+  fechaUltimoPago: { type: Date },
+  fechaRegistro: { type: Date, default: Date.now },
+  activo: { type: Boolean, default: true }
 }, {
-  timestamps: true // Crea automáticamente createdAt y updatedAt
+  timestamps: true
 });
 
-// Método virtual para obtener nombre completo
-clientSchema.virtual('nombreCompleto').get(function() {
-  return `${this.nombre} ${this.apellido}`;
-});
+// MÉTODO PARA CALCULAR VENCIMIENTO DESDE LA FECHA DEL ÚLTIMO PAGO
+clientSchema.methods.calcularProximoVencimiento = function() {
+  const base = this.fechaUltimoPago ? new Date(this.fechaUltimoPago) : new Date();
+  let proximoVencimiento = new Date(base);
 
-// Método para verificar si el pago está vencido
-clientSchema.methods.isPagoVencido = function() {
-  if (!this.fechaUltimoPago) return true;
-  
-  const fechaVencimiento = new Date(this.fechaUltimoPago);
-  fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 1);
-  
-  return new Date() > fechaVencimiento;
+  switch (this.tipoPlan) {
+    case 'diario':
+      proximoVencimiento.setDate(base.getDate() + 1);
+      break;
+    case 'semanal':
+      proximoVencimiento.setDate(base.getDate() + 7);
+      break;
+    case 'quincenal':
+      proximoVencimiento.setDate(base.getDate() + 15);
+      break;
+    case 'mensual':
+      proximoVencimiento.setMonth(base.getMonth() + 1);
+      break;
+    case 'anual':
+      proximoVencimiento.setFullYear(base.getFullYear() + 1);
+      break;
+  }
+
+  this.fechaVencimiento = proximoVencimiento;
+  return proximoVencimiento;
 };
 
-// Índices para mejorar búsquedas
-clientSchema.index({ email: 1 });
-clientSchema.index({ documento: 1 });
-clientSchema.index({ estadoPago: 1 });
+// MÉTODO PARA ACTUALIZAR EL ESTADO DEL PAGO AUTOMÁTICAMENTE
+clientSchema.methods.actualizarEstadoPago = function() {
+  const hoy = new Date();
+  if (!this.fechaVencimiento) {
+    this.estadoPago = 'pendiente';
+  } else if (hoy > this.fechaVencimiento) {
+    this.estadoPago = 'vencido';
+  } else {
+    this.estadoPago = 'pagado';
+  }
+  return this.estadoPago;
+};
 
 module.exports = mongoose.model('Client', clientSchema);

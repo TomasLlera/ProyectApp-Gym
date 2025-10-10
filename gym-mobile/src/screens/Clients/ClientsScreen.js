@@ -1,5 +1,6 @@
 // src/screens/Clients/ClientsScreen.js
 import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -10,6 +11,9 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { clientsAPI } from '../../api/axios';
 
@@ -25,12 +29,20 @@ export default function ClientsScreen({ navigation, route }) {
     loadClients();
   }, [statusFilter]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      if (route.params?.refresh || route.params?.updated) {
+        loadClients();
+      }
+    }, [route.params?.refresh, route.params?.updated])
+  );
+
   const loadClients = async () => {
     try {
       const params = {};
       if (searchTerm) params.search = searchTerm;
       if (statusFilter) params.status = statusFilter;
-      
+
       const { data } = await clientsAPI.getAll(params);
       setClients(data.data.clients);
     } catch (error) {
@@ -85,11 +97,15 @@ export default function ClientsScreen({ navigation, route }) {
 
   const renderClient = ({ item }) => {
     const badge = getStatusBadge(item.estadoPago);
-    
+
     return (
       <TouchableOpacity
         style={styles.clientCard}
-        onPress={() => navigation.navigate('ClientDetail', { clientId: item._id })}
+        onPress={() => {
+          console.log('Cliente seleccionado:', item._id);
+          navigation.navigate('ClientDetail', { clientId: item._id });
+        }}
+        activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
           <View style={styles.avatarCircle}>
@@ -97,7 +113,7 @@ export default function ClientsScreen({ navigation, route }) {
               {item.nombre.charAt(0)}{item.apellido.charAt(0)}
             </Text>
           </View>
-          
+
           <View style={styles.clientInfo}>
             <Text style={styles.clientName}>
               {item.nombre} {item.apellido}
@@ -105,7 +121,7 @@ export default function ClientsScreen({ navigation, route }) {
             <Text style={styles.clientEmail}>{item.email}</Text>
             <Text style={styles.clientDoc}>DNI: {item.documento}</Text>
           </View>
-          
+
           <View style={[styles.statusBadge, { backgroundColor: badge.bgColor }]}>
             <Text style={[styles.statusText, { color: badge.color }]}>
               {badge.label}
@@ -162,7 +178,7 @@ export default function ClientsScreen({ navigation, route }) {
             Todos
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.filterChip, statusFilter === 'pagado' && styles.filterChipActive]}
           onPress={() => setStatusFilter('pagado')}
@@ -171,7 +187,7 @@ export default function ClientsScreen({ navigation, route }) {
             ✅ Al día
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.filterChip, statusFilter === 'vencido' && styles.filterChipActive]}
           onPress={() => setStatusFilter('vencido')}
@@ -268,7 +284,10 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+      >
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Nuevo Cliente</Text>
@@ -277,7 +296,7 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.formContainer}>
+          <ScrollView style={styles.formContainer}>
             <TextInput
               style={styles.input}
               placeholder="Nombre *"
@@ -329,18 +348,15 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
                 {loading ? 'Creando...' : 'Crear Cliente'}
               </Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   searchContainer: {
     padding: 16,
     backgroundColor: '#fff',
@@ -354,42 +370,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
   },
-  searchIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    padding: 12,
-    fontSize: 16,
-    color: '#1F2937',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 8,
-    backgroundColor: '#fff',
-  },
+  searchIcon: { fontSize: 20, marginRight: 8 },
+  searchInput: { flex: 1, padding: 12, fontSize: 16, color: '#1F2937' },
+  filterContainer: { flexDirection: 'row', padding: 16, gap: 8, backgroundColor: '#fff' },
   filterChip: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     backgroundColor: '#F3F4F6',
   },
-  filterChipActive: {
-    backgroundColor: '#4F46E5',
-  },
-  filterText: {
-    color: '#6B7280',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  filterTextActive: {
-    color: '#fff',
-  },
-  listContainer: {
-    padding: 16,
-  },
+  filterChipActive: { backgroundColor: '#4F46E5' },
+  filterText: { color: '#6B7280', fontWeight: '600', fontSize: 14 },
+  filterTextActive: { color: '#fff' },
+  listContainer: { padding: 16 },
   clientCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -401,11 +394,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   avatarCircle: {
     width: 50,
     height: 50,
@@ -415,38 +404,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  avatarInitial: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  clientEmail: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  clientDoc: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
+  avatarInitial: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  clientInfo: { flex: 1 },
+  clientName: { fontSize: 16, fontWeight: 'bold', color: '#1F2937', marginBottom: 2 },
+  clientEmail: { fontSize: 13, color: '#6B7280', marginBottom: 2 },
+  clientDoc: { fontSize: 12, color: '#9CA3AF' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  statusText: { fontSize: 11, fontWeight: 'bold' },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -455,42 +419,19 @@ const styles = StyleSheet.create({
     borderTopColor: '#F3F4F6',
     paddingTop: 12,
   },
-  amountContainer: {
-    flex: 1,
-  },
-  amountLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  amountValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
+  amountContainer: { flex: 1 },
+  amountLabel: { fontSize: 12, color: '#6B7280', marginBottom: 4 },
+  amountValue: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
   payButton: {
     backgroundColor: '#10B981',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 10,
   },
-  payButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#6B7280',
-  },
+  payButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  emptyContainer: { alignItems: 'center', paddingTop: 60 },
+  emptyEmoji: { fontSize: 64, marginBottom: 16 },
+  emptyText: { fontSize: 18, color: '#6B7280' },
   fabButton: {
     position: 'absolute',
     right: 20,
@@ -507,10 +448,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  fabIcon: {
-    fontSize: 28,
-    color: '#fff',
-  },
+  fabIcon: { fontSize: 28, color: '#fff' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -530,18 +468,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  modalClose: {
-    fontSize: 28,
-    color: '#6B7280',
-  },
-  formContainer: {
-    padding: 20,
-  },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
+  modalClose: { fontSize: 28, color: '#6B7280' },
+  formContainer: { padding: 20 },
   input: {
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
@@ -557,12 +486,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  submitButtonDisabled: { opacity: 0.6 },
+  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

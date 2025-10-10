@@ -50,6 +50,7 @@ export const clientsAPI = {
   getById: (id) => axiosInstance.get(`/clients/${id}`),
   create: (data) => axiosInstance.post('/clients', data),
   update: (id, data) => axiosInstance.put(`/clients/${id}`, data),
+  delete: (id) => axiosInstance.delete(`/clients/${id}`),  // ← VERIFICA QUE ESTÉ ESTA LÍNEA
   updatePayment: (id, status) => axiosInstance.put(`/clients/${id}/payment`, { estadoPago: status }),
   getStats: () => axiosInstance.get('/clients/stats'),
 };
