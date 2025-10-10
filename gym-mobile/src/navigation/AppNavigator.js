@@ -83,12 +83,20 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator>
         {!user ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
         ) : (
           <>
-            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen 
+              name="Main" 
+              component={TabNavigator}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="ClientDetail"
               component={ClientDetailScreen}
@@ -97,6 +105,7 @@ export default function AppNavigator() {
                 title: 'Detalle del Cliente',
                 headerStyle: { backgroundColor: '#4F46E5' },
                 headerTintColor: '#fff',
+                headerBackTitle: 'Volver',
               }}
             />
           </>
