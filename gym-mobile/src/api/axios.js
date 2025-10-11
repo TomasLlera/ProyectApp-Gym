@@ -61,5 +61,13 @@ export const paymentsAPI = {
   create: (data) => axiosInstance.post('/payments', data),
   getOverdue: () => axiosInstance.get('/payments/overdue'),
 };
-
+// Routines endpoints
+export const routinesAPI = {
+  getAll: (params) => axiosInstance.get('/routines', { params }),
+  getById: (id) => axiosInstance.get(`/routines/${id}`),
+  create: (data) => axiosInstance.post('/routines', data),
+  update: (id, data) => axiosInstance.put(`/routines/${id}`, data),
+  delete: (id) => axiosInstance.delete(`/routines/${id}`),
+  getTemplates: () => axiosInstance.get('/routines/templates'),
+};
 export default axiosInstance;
