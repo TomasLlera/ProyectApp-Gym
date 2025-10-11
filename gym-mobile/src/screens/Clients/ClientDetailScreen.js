@@ -1,5 +1,6 @@
 // src/screens/Clients/ClientDetailScreen.js
 import React, { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -22,9 +23,12 @@ export default function ClientDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  useEffect(() => {
-    loadClientData();
-  }, []);
+  // 🔥 AUTO-REFRESH: Cargar datos al entrar a la pantalla
+  useFocusEffect(
+    React.useCallback(() => {
+      loadClientData();
+    }, [clientId])
+  );
 
   const loadClientData = async () => {
     try {
@@ -106,6 +110,7 @@ export default function ClientDetailScreen({ route, navigation }) {
     try {
       await clientsAPI.updatePayment(clientId, status);
       Alert.alert('Éxito', 'Estado actualizado');
+      // 🔥 Recargar datos automáticamente después de actualizar
       setTimeout(() => loadClientData(), 300);
     } catch (error) {
       console.error('Error updating payment:', error);
@@ -184,6 +189,7 @@ export default function ClientDetailScreen({ route, navigation }) {
         <InfoRow label="DNI" value={client.documento} />
         <InfoRow label="Teléfono" value={client.telefono || 'No registrado'} />
         <InfoRow label="Email" value={client.email} />
+        <InfoRow label="Tipo de Plan" value={client.tipoPlan?.toUpperCase() || 'MENSUAL'} />
         <InfoRow label="Fecha de registro" value={new Date(client.fechaRegistro).toLocaleDateString('es-AR')} />
         <InfoRow
           label="Último pago"
@@ -227,9 +233,12 @@ export default function ClientDetailScreen({ route, navigation }) {
       <EditClientModal
         visible={showEditModal}
         client={client}
-        navigation={navigation}
         onClose={() => setShowEditModal(false)}
-        onSuccess={() => { setShowEditModal(false); loadClientData(); }}
+        onSuccess={() => { 
+          setShowEditModal(false); 
+          // 🔥 Recargar datos automáticamente después de editar
+          loadClientData(); 
+        }}
       />
     </ScrollView>
   );
@@ -246,14 +255,14 @@ function InfoRow({ label, value, highlight }) {
 }
 
 // Edit Modal Component
-function EditClientModal({ visible, client, navigation, onClose, onSuccess }) {
+function EditClientModal({ visible, client, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     nombre: client?.nombre || '',
     apellido: client?.apellido || '',
     email: client?.email || '',
     documento: client?.documento || '',
     telefono: client?.telefono || '',
-    tipoPlan: client?.tipoPlan || 'mensual',  // ← NUEVO
+    tipoPlan: client?.tipoPlan || 'mensual',
     montoMensual: client?.montoMensual?.toString() || '',
   });
   const [loading, setLoading] = useState(false);
@@ -266,7 +275,7 @@ function EditClientModal({ visible, client, navigation, onClose, onSuccess }) {
         email: client.email,
         documento: client.documento,
         telefono: client.telefono || '',
-        tipoPlan: client.tipoPlan || 'mensual',  // ← NUEVO
+        tipoPlan: client.tipoPlan || 'mensual',
         montoMensual: client.montoMensual.toString(),
       });
     }
@@ -283,7 +292,6 @@ function EditClientModal({ visible, client, navigation, onClose, onSuccess }) {
       await clientsAPI.update(client._id, { ...formData, montoMensual: parseFloat(formData.montoMensual) });
       Alert.alert('Éxito', '✅ Cliente actualizado exitosamente');
       onSuccess();
-      navigation.setParams({ updated: Date.now() });
     } catch (error) {
       Alert.alert('Error', error.response?.data?.error || 'Error al actualizar cliente');
     } finally {
@@ -307,59 +315,26 @@ function EditClientModal({ visible, client, navigation, onClose, onSuccess }) {
             <TextInput style={styles.input} placeholder="Apellido *" value={formData.apellido} onChangeText={(text) => setFormData({ ...formData, apellido: text })} />
             <TextInput style={styles.input} placeholder="Email *" value={formData.email} onChangeText={(text) => setFormData({ ...formData, email: text })} keyboardType="email-address" autoCapitalize="none" />
             <TextInput style={styles.input} placeholder="DNI *" value={formData.documento} onChangeText={(text) => setFormData({ ...formData, documento: text })} keyboardType="numeric" />
-            {/* SELECTOR DE PLAN - NUEVO */}
+            
             <View style={styles.planSelector}>
               <Text style={styles.planLabel}>Tipo de Plan *</Text>
               <View style={styles.planOptions}>
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'diario' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'diario' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'diario' && styles.planChipTextActive]}>
-                    📅 Diario
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'semanal' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'semanal' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'semanal' && styles.planChipTextActive]}>
-                    🗓️ Semanal
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'quincenal' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'quincenal' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'quincenal' && styles.planChipTextActive]}>
-                    📆 Quincenal
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'mensual' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'mensual' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'mensual' && styles.planChipTextActive]}>
-                    📅 Mensual
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'anual' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'anual' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'anual' && styles.planChipTextActive]}>
-                    🎯 Anual
-                  </Text>
-                </TouchableOpacity>
+                {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
+                  <TouchableOpacity
+                    key={plan}
+                    style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
+                    onPress={() => setFormData({ ...formData, tipoPlan: plan })}
+                  >
+                    <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
+                      {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
             <TextInput style={styles.input} placeholder="Teléfono" value={formData.telefono} onChangeText={(text) => setFormData({ ...formData, telefono: text })} keyboardType="phone-pad" />
-            <TextInput style={styles.input} placeholder="Monto Mensual *" value={formData.montoMensual} onChangeText={(text) => setFormData({ ...formData, montoMensual: text })} keyboardType="numeric" />
+            <TextInput style={styles.input} placeholder="Cuota *" value={formData.montoMensual} onChangeText={(text) => setFormData({ ...formData, montoMensual: text })} keyboardType="numeric" />
 
             <TouchableOpacity style={[styles.submitButton, loading && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={loading}>
               <Text style={styles.submitButtonText}>{loading ? 'Guardando...' : 'Guardar Cambios'}</Text>
@@ -372,245 +347,48 @@ function EditClientModal({ visible, client, navigation, onClose, onSuccess }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  header: {
-    backgroundColor: '#fff',
-    padding: 24,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#4F46E5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarText: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  clientName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  clientEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  statusBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  statusHint: {
-    color: '#fff',
-    fontSize: 10,
-    opacity: 0.8,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    minWidth: '45%',
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  section: {
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  infoValueHighlight: {
-    fontSize: 18,
-    color: '#3B82F6',
-    fontWeight: 'bold',
-  },
-  emptyPayments: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  paymentCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  paymentDate: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  paymentMethod: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  paymentAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#10B981',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  modalClose: {
-    fontSize: 28,
-    color: '#6B7280',
-  },
-  formContainer: {
-    padding: 20,
-  },
-  input: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 12,
-    color: '#1F2937',
-  },
-  submitButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 30,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  planSelector: {
-    marginBottom: 16,
-  },
-  planLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  planOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  planChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 2,
-    borderColor: '#F3F4F6',
-  },
-  planChipActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#4F46E5',
-  },
-  planChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  planChipTextActive: {
-    color: '#4F46E5',
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { fontSize: 16, color: '#6B7280' },
+  header: { backgroundColor: '#fff', padding: 24, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#4F46E5', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  avatarText: { fontSize: 32, color: '#fff', fontWeight: 'bold' },
+  clientName: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
+  clientEmail: { fontSize: 14, color: '#6B7280', marginBottom: 12 },
+  statusBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  statusText: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+  statusHint: { color: '#fff', fontSize: 10, opacity: 0.8, textAlign: 'center', marginTop: 2 },
+  actionButtons: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 8 },
+  actionButton: { flex: 1, minWidth: '45%', padding: 12, borderRadius: 12, alignItems: 'center' },
+  actionButtonText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  section: { backgroundColor: '#fff', margin: 16, padding: 16, borderRadius: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  infoLabel: { fontSize: 14, color: '#6B7280' },
+  infoValue: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
+  infoValueHighlight: { fontSize: 18, color: '#3B82F6', fontWeight: 'bold' },
+  emptyPayments: { alignItems: 'center', paddingVertical: 40 },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyText: { fontSize: 16, color: '#6B7280' },
+  paymentCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 16, borderRadius: 8, marginBottom: 8 },
+  paymentDate: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
+  paymentMethod: { fontSize: 12, color: '#6B7280' },
+  paymentAmount: { fontSize: 20, fontWeight: 'bold', color: '#10B981' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
+  modalClose: { fontSize: 28, color: '#6B7280' },
+  formContainer: { padding: 20 },
+  input: { backgroundColor: '#F3F4F6', borderRadius: 12, padding: 16, fontSize: 16, marginBottom: 12, color: '#1F2937' },
+  planSelector: { marginBottom: 16 },
+  planLabel: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 12 },
+  planOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  planChip: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: '#F3F4F6', borderWidth: 2, borderColor: '#F3F4F6' },
+  planChipActive: { backgroundColor: '#EEF2FF', borderColor: '#4F46E5' },
+  planChipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
+  planChipTextActive: { color: '#4F46E5' },
+  submitButton: { backgroundColor: '#3B82F6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8, marginBottom: 30 },
+  submitButtonDisabled: { opacity: 0.6 },
+  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

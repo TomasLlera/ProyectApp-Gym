@@ -1,7 +1,7 @@
 // src/controllers/clientController.js
 
-const Client = require('../models/Client');
-const Payment = require('../models/Payment');
+const Client = require('../models/client');
+const Payment = require('../models/payment');
 
 /* ============================================
    📄 Obtener todos los clientes con filtros y paginación
@@ -12,7 +12,6 @@ exports.getAllClients = async (req, res) => {
     
     let query = { activo: true };
     
-    // Filtro por búsqueda (nombre, apellido, email o documento)
     if (search) {
       query.$or = [
         { nombre: { $regex: search, $options: 'i' } },
@@ -22,7 +21,6 @@ exports.getAllClients = async (req, res) => {
       ];
     }
     
-    // Filtro por estado de pago
     if (status && ['pagado', 'vencido', 'pendiente'].includes(status)) {
       query.estadoPago = status;
     }
@@ -31,7 +29,7 @@ exports.getAllClients = async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .sort({ fechaRegistro: -1 })
-      .select('-__v'); // Excluir campo __v de MongoDB
+      .select('-__v');
     
     const total = await Client.countDocuments(query);
     
@@ -71,7 +69,6 @@ exports.getClientById = async (req, res) => {
       });
     }
     
-    // Obtener los últimos 6 pagos
     const payments = await Payment.find({ cliente: client._id })
       .sort({ fecha: -1 })
       .limit(6);
@@ -141,15 +138,11 @@ exports.createClient = async (req, res) => {
 };
 
 /* ============================================
-   ✏️ Actualizar cliente
+   ✏️ Actualizar cliente (FIX: RECALCULA VENCIMIENTO)
 ============================================ */
 exports.updateClient = async (req, res) => {
   try {
-    const client = await Client.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, updatedAt: new Date() },
-      { new: true, runValidators: true }
-    ).select('-__v');
+    const client = await Client.findById(req.params.id);
     
     if (!client) {
       return res.status(404).json({
@@ -157,6 +150,20 @@ exports.updateClient = async (req, res) => {
         error: 'Cliente no encontrado'
       });
     }
+
+    const tipoPlanAnterior = client.tipoPlan;
+    const tipoPlanNuevo = req.body.tipoPlan;
+
+    Object.assign(client, req.body);
+    client.updatedAt = new Date();
+
+    if (tipoPlanAnterior !== tipoPlanNuevo && client.fechaUltimoPago) {
+      console.log(`📅 Plan cambió de ${tipoPlanAnterior} a ${tipoPlanNuevo} - Recalculando vencimiento...`);
+      client.calcularProximoVencimiento();
+      client.actualizarEstadoPago();
+    }
+
+    await client.save();
     
     res.json({
       success: true,
@@ -173,7 +180,7 @@ exports.updateClient = async (req, res) => {
 };
 
 /* ============================================
-   💰 Actualizar estado de pago (versión mejorada)
+   💰 Actualizar estado de pago (ARREGLADO)
 ============================================ */
 exports.updatePaymentStatus = async (req, res) => {
   try {
@@ -182,7 +189,7 @@ exports.updatePaymentStatus = async (req, res) => {
     if (!estadoPago || !['pagado', 'vencido', 'pendiente'].includes(estadoPago)) {
       return res.status(400).json({
         success: false,
-        error: 'Estado de pago inválido'
+        error: 'Estado de pago inválido. Debe ser: pagado, vencido o pendiente'
       });
     }
 
@@ -195,32 +202,45 @@ exports.updatePaymentStatus = async (req, res) => {
       });
     }
 
-    // Actualizar estado
+    console.log('🔄 Actualizando estado de pago...');
+    console.log('Cliente:', client.nombre, client.apellido);
+    console.log('Estado anterior:', client.estadoPago);
+    console.log('Estado nuevo:', estadoPago);
+
     client.estadoPago = estadoPago;
     
-    // Si se marca como pagado, registrar la fecha de pago y calcular vencimiento
     if (estadoPago === 'pagado') {
-      client.fechaUltimoPago = new Date();
-      client.calcularProximoVencimiento(); // Método del modelo Client
-
-      // Registrar el pago
       const currentDate = new Date();
-      const payment = new Payment({
-        cliente: client._id,
-        monto: client.montoMensual,
-        fecha: currentDate,
-        mes: currentDate.getMonth() + 1,
-        año: currentDate.getFullYear(),
-        estado: 'confirmado'
-      });
+      client.fechaUltimoPago = currentDate;
+      client.calcularProximoVencimiento();
 
-      await payment.save();
+      console.log('✅ Marcado como pagado');
+      console.log('📅 Próximo vencimiento:', client.fechaVencimiento);
+
+      try {
+        const payment = new Payment({
+          cliente: client._id,
+          monto: client.montoMensual,
+          fecha: currentDate,
+          mes: currentDate.getMonth() + 1,
+          año: currentDate.getFullYear(),
+          estado: 'confirmado',
+          metodoPago: 'efectivo'
+        });
+
+        await payment.save();
+        console.log('💰 Pago registrado en historial');
+      } catch (paymentError) {
+        if (paymentError.code === 11000) {
+          console.log('⚠️  Ya existe un pago para este mes');
+        } else {
+          console.error('Error registrando pago:', paymentError);
+        }
+      }
     }
-    
-    await client.save();
 
-    console.log('Cliente actualizado:', client.estadoPago);
-    console.log('Próximo vencimiento:', client.fechaVencimiento);
+    await client.save();
+    console.log('✅ Estado actualizado exitosamente');
 
     res.json({
       success: true,
@@ -229,10 +249,13 @@ exports.updatePaymentStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error actualizando estado de pago:', error);
+    console.error('❌ Error actualizando estado de pago:', error);
+    console.error('Stack:', error.stack);
+    
     res.status(500).json({
       success: false,
-      error: 'Error al actualizar estado de pago'
+      error: 'Error al actualizar estado de pago',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -278,7 +301,6 @@ exports.getStats = async (req, res) => {
     const clientesVencidos = await Client.countDocuments({ activo: true, estadoPago: 'vencido' });
     const clientesPendientes = await Client.countDocuments({ activo: true, estadoPago: 'pendiente' });
     
-    // Ingresos del mes actual
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     
@@ -298,7 +320,6 @@ exports.getStats = async (req, res) => {
       }
     ]);
     
-    // Actividad reciente (últimos 5 clientes modificados)
     const actividadReciente = await Client.find({ activo: true })
       .sort({ updatedAt: -1 })
       .limit(5)

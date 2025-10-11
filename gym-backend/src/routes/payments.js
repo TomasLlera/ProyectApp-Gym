@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const Payment = require('../models/Payment');
-const Client = require('../models/Client');
+const Payment = require('../models/payment');
+const Client = require('../models/client');
 
 // Aplicar middleware de autenticación
 router.use(auth);
@@ -92,20 +92,16 @@ router.post('/', async (req, res) => {
   }
 });
 
-// @route   GET /api/payments/overdue
-// @desc    Obtener clientes con pagos vencidos
+// 🔥 FIX: @route   GET /api/payments/overdue
+// @desc    Obtener clientes con pagos vencidos (CUALQUIER método)
 router.get('/overdue', async (req, res) => {
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+    // 🔥 NUEVA LÓGICA: Buscar todos los clientes con estadoPago 'vencido'
+    // Ya sea que estén vencidos automáticamente O marcados manualmente
     const overdueClients = await Client.find({
       activo: true,
-      $or: [
-        { fechaUltimoPago: null },
-        { fechaUltimoPago: { $lt: thirtyDaysAgo } }
-      ]
-    });
+      estadoPago: 'vencido' // 👈 Simplificado - solo buscamos por estado
+    }).sort({ fechaVencimiento: 1 }); // Ordenar por fecha de vencimiento
     
     res.json({
       success: true,
