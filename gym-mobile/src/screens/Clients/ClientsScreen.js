@@ -244,6 +244,7 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
     email: '',
     documento: '',
     telefono: '',
+    tipoPlan: 'mensual',  // ← NUEVO
     montoMensual: '3500',
   });
   const [loading, setLoading] = useState(false);
@@ -324,6 +325,58 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
               onChangeText={(text) => setFormData({ ...formData, documento: text })}
               keyboardType="numeric"
             />
+
+            {/* SELECTOR DE PLAN - NUEVO */}
+            <View style={styles.planSelector}>
+              <Text style={styles.planLabel}>Tipo de Plan *</Text>
+              <View style={styles.planOptions}>
+                <TouchableOpacity
+                  style={[styles.planChip, formData.tipoPlan === 'diario' && styles.planChipActive]}
+                  onPress={() => setFormData({ ...formData, tipoPlan: 'diario' })}
+                >
+                  <Text style={[styles.planChipText, formData.tipoPlan === 'diario' && styles.planChipTextActive]}>
+                    📅 Diario
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.planChip, formData.tipoPlan === 'semanal' && styles.planChipActive]}
+                  onPress={() => setFormData({ ...formData, tipoPlan: 'semanal' })}
+                >
+                  <Text style={[styles.planChipText, formData.tipoPlan === 'semanal' && styles.planChipTextActive]}>
+                    🗓️ Semanal
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.planChip, formData.tipoPlan === 'quincenal' && styles.planChipActive]}
+                  onPress={() => setFormData({ ...formData, tipoPlan: 'quincenal' })}
+                >
+                  <Text style={[styles.planChipText, formData.tipoPlan === 'quincenal' && styles.planChipTextActive]}>
+                    📆 Quincenal
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.planChip, formData.tipoPlan === 'mensual' && styles.planChipActive]}
+                  onPress={() => setFormData({ ...formData, tipoPlan: 'mensual' })}
+                >
+                  <Text style={[styles.planChipText, formData.tipoPlan === 'mensual' && styles.planChipTextActive]}>
+                    📅 Mensual
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.planChip, formData.tipoPlan === 'anual' && styles.planChipActive]}
+                  onPress={() => setFormData({ ...formData, tipoPlan: 'anual' })}
+                >
+                  <Text style={[styles.planChipText, formData.tipoPlan === 'anual' && styles.planChipTextActive]}>
+                    🎯 Anual
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TextInput
               style={styles.input}
               placeholder="Teléfono"
@@ -488,4 +541,39 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+
+   planSelector: {
+    marginBottom: 16,
+  },
+  planLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  planOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  planChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#F3F4F6',
+  },
+  planChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#4F46E5',
+  },
+  planChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  planChipTextActive: {
+    color: '#4F46E5',
+  },
 });
