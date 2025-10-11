@@ -1,38 +1,38 @@
-// src/models/Routine.js
+// src/models/Routine.js - ARCHIVO NUEVO
+
 const mongoose = require('mongoose');
 
 const exerciseSchema = new mongoose.Schema({
   nombre: {
     type: String,
-    required: [true, 'El nombre del ejercicio es obligatorio'],
+    required: true,
     trim: true
   },
+  descripcion: String,
   series: {
     type: Number,
-    default: 3,
-    min: [1, 'Debe tener al menos 1 serie']
+    required: true,
+    min: 1
   },
-  repeticiones: {
-    type: String, // "10-12" o "30 seg" o "hasta fallo"
-    default: "10"
-  },
+  repeticiones: String, // "10-12" o "15"
   peso: {
-    type: Number,
-    default: 0,
-    min: [0, 'El peso no puede ser negativo']
+    type: String,
+    default: 'A definir'
   },
   descanso: {
-    type: Number, // en segundos
-    default: 60,
-    min: [0, 'El descanso no puede ser negativo']
-  },
-  notas: {
     type: String,
-    maxLength: 100
+    default: '60 seg'
   },
-  completado: {
-    type: Boolean,
-    default: false
+  grupoMuscular: {
+    type: String,
+    enum: ['pecho', 'espalda', 'piernas', 'hombros', 'brazos', 'abdominales', 'cardio', 'fullbody'],
+    required: true
+  },
+  videoUrl: String,
+  notas: String,
+  orden: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -40,76 +40,56 @@ const routineSchema = new mongoose.Schema({
   cliente: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client',
-    required: [true, 'El cliente es obligatorio']
+    required: true
   },
-  fecha: {
-    type: Date,
-    required: [true, 'La fecha es obligatoria']
-  },
-  titulo: {
+  nombre: {
     type: String,
-    required: [true, 'El título es obligatorio'],
-    trim: true,
-    maxLength: [100, 'El título no puede tener más de 100 caracteres']
+    required: true,
+    trim: true
   },
+  descripcion: String,
   tipo: {
     type: String,
-    enum: ['cardio', 'fuerza', 'funcional', 'mixto', 'rehabilitacion'],
-    default: 'mixto'
+    enum: ['fuerza', 'hipertrofia', 'resistencia', 'cardio', 'funcional', 'personalizado'],
+    default: 'personalizado'
   },
+  nivel: {
+    type: String,
+    enum: ['principiante', 'intermedio', 'avanzado'],
+    default: 'principiante'
+  },
+  diasSemana: [{
+    type: String,
+    enum: ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+  }],
   ejercicios: [exerciseSchema],
   duracionEstimada: {
-    type: Number, // en minutos
-    default: 60,
-    min: [1, 'La duración debe ser al menos 1 minuto']
-  },
-  duracionReal: {
-    type: Number, // en minutos - lo que realmente tardó
-    min: [0, 'La duración real no puede ser negativa']
-  },
-  completada: {
-    type: Boolean,
-    default: false
-  },
-  calificacion: {
     type: Number,
-    min: 1,
-    max: 5
+    default: 60
   },
-  notas: {
-    type: String,
-    maxLength: 500
+  activa: {
+    type: Boolean,
+    default: true
   },
-  googleEventId: {
-    type: String // ID del evento en Google Calendar
+  fechaInicio: {
+    type: Date,
+    default: Date.now
   },
-  instructor: {
-    type: String,
-    default: 'Entrenador Personal'
+  notas: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-}, {
-  timestamps: true
 });
 
-// Índices para búsquedas eficientes
-routineSchema.index({ cliente: 1, fecha: -1 });
-routineSchema.index({ fecha: -1 });
-routineSchema.index({ tipo: 1 });
-routineSchema.index({ completada: 1 });
-
-// Método virtual para obtener progreso
-routineSchema.virtual('progreso').get(function() {
-  if (this.ejercicios.length === 0) return 0;
-  
-  const completados = this.ejercicios.filter(ej => ej.completado).length;
-  return Math.round((completados / this.ejercicios.length) * 100);
+routineSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
-// Método para marcar rutina como completada
-routineSchema.methods.marcarCompletada = function() {
-  this.completada = true;
-  this.duracionReal = this.duracionReal || this.duracionEstimada;
-  return this.save();
-};
-
-module.exports = mongoose.model('Routine', routineSchema);
+// Fix para evitar error de overwrite
+module.exports = mongoose.models.Routine || mongoose.model('Routine', routineSchema);

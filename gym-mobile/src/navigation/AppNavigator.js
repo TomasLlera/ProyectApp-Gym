@@ -12,6 +12,9 @@ import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 import ClientsScreen from '../screens/Clients/ClientsScreen';
 import ClientDetailScreen from '../screens/Clients/ClientDetailScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
+import RoutinesScreen from '../screens/Routines/RoutinesScreen';
+import RoutineDetailScreen from '../screens/Routines/RoutineDetailScreen';
+import RoutineTemplatesScreen from '../screens/Routines/RoutineTemplatesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -62,6 +65,16 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
+        name="Rutinas"
+        component={RoutinesStack}
+        options={{
+          tabBarLabel: 'Rutinas',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 22 }}>🏋️</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
         name="Perfil"
         component={ProfileScreen}
         options={{
@@ -71,6 +84,30 @@ function TabNavigator() {
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+// Stack de Rutinas
+function RoutinesStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="RoutinesList" component={RoutinesScreen} />
+      <Stack.Screen
+        name="RoutineDetail"
+        component={RoutineDetailScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Detalle de Rutina',
+          headerStyle: { backgroundColor: '#fff' },
+          headerTintColor: '#1F2937',
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      />
+      <Stack.Screen
+        name="RoutineTemplates"
+        component={RoutineTemplatesScreen}
+      />
+    </Stack.Navigator>
   );
 }
 
@@ -85,15 +122,15 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator>
         {!user ? (
-          <Stack.Screen 
-            name="Login" 
+          <Stack.Screen
+            name="Login"
             component={LoginScreen}
             options={{ headerShown: false }}
           />
         ) : (
           <>
-            <Stack.Screen 
-              name="Main" 
+            <Stack.Screen
+              name="Main"
               component={TabNavigator}
               options={{ headerShown: false }}
             />
