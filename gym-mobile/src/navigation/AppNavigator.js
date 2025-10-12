@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
+
 // Screens
 import LoginScreen from '../screens/Auth/LoginScreen';
 import DashboardScreen from '../screens/Dashboard/DashboardScreen';
@@ -15,6 +16,9 @@ import ProfileScreen from '../screens/Profile/ProfileScreen';
 import RoutinesScreen from '../screens/Routines/RoutinesScreen';
 import RoutineDetailScreen from '../screens/Routines/RoutineDetailScreen';
 import RoutineTemplatesScreen from '../screens/Routines/RoutineTemplatesScreen';
+import CreateRoutineScreen from '../screens/Routines/CreateRoutineScreen';
+import CreateTemplateScreen from '../screens/Routines/CreateTemplateScreen';
+import GroupDetailScreen from '../screens/Routines/GroupDetailScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -106,6 +110,25 @@ function RoutinesStack() {
       <Stack.Screen
         name="RoutineTemplates"
         component={RoutineTemplatesScreen}
+      />
+      <Stack.Screen
+        name="CreateTemplate"
+        component={CreateTemplateScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="GroupDetail"
+        component={GroupDetailScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="CreateRoutine"
+        component={CreateRoutineScreen}
+        options={{
+          headerShown: false,
+        }}
       />
     </Stack.Navigator>
   );
