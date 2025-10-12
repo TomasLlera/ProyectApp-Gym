@@ -54,6 +54,8 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/clients', require('./routes/clients'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/routines', require('./routes/routines'));
+app.use('/api/groups', require('./routes/groups'));
+
 
 // 404 handler - DEBE IR PRIMERO
 app.use((req, res) => {

@@ -64,10 +64,22 @@ export const paymentsAPI = {
 // Routines endpoints
 export const routinesAPI = {
   getAll: (params) => axiosInstance.get('/routines', { params }),
+  getGrouped: () => axiosInstance.get('/routines/grouped'), // 🔥 NUEVO
   getById: (id) => axiosInstance.get(`/routines/${id}`),
   create: (data) => axiosInstance.post('/routines', data),
   update: (id, data) => axiosInstance.put(`/routines/${id}`, data),
+  updateGroup: (data) => axiosInstance.put('/routines/group', data), // 🔥 NUEVO
+  addClientToGroup: (data) => axiosInstance.post('/routines/add-client', data), // 🔥 NUEVO
   delete: (id) => axiosInstance.delete(`/routines/${id}`),
   getTemplates: () => axiosInstance.get('/routines/templates'),
+  createTemplate: (data) => axiosInstance.post('/routines/templates', data),
+};
+
+export const groupsAPI = {
+  getAll: () => axiosInstance.get('/groups'),
+  getById: (id) => axiosInstance.get(`/groups/${id}`),
+  create: (data) => axiosInstance.post('/groups', data),
+  update: (id, data) => axiosInstance.put(`/groups/${id}`, data),
+  delete: (id) => axiosInstance.delete(`/groups/${id}`),
 };
 export default axiosInstance;

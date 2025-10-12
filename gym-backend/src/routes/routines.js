@@ -8,7 +8,11 @@ const routinesController = require('../controllers/routinesController');
 // const auth = require('../middleware/auth');
 // router.use(auth);
 
+router.post('/templates', routinesController.createTemplate);
 router.get('/templates', routinesController.getTemplates);
+router.get('/grouped', routinesController.getGroupedRoutines);
+router.post('/add-client', routinesController.addClientToGroup);
+router.put('/group', routinesController.updateRoutineGroup);
 router.get('/', routinesController.getAllRoutines);
 router.get('/:id', routinesController.getRoutineById);
 router.post('/', routinesController.createRoutine);

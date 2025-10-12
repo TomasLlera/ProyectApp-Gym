@@ -8,7 +8,8 @@ exports.getAllRoutines = async (req, res) => {
   try {
     const { clienteId, activa } = req.query;
     
-    let query = {};
+    let query = { activa: true }; // 🔥 Por defecto solo mostrar activas
+    
     if (clienteId) query.cliente = clienteId;
     if (activa !== undefined) query.activa = activa === 'true';
     
@@ -58,27 +59,42 @@ exports.getRoutineById = async (req, res) => {
 // Crear nueva rutina
 exports.createRoutine = async (req, res) => {
   try {
-    const { clienteId, ...routineData } = req.body;
+    const { clienteId, clienteIds, ...routineData } = req.body;
     
-    const client = await Client.findById(clienteId);
-    if (!client) {
-      return res.status(404).json({
+    // Soporte para múltiples clientes
+    const targetClients = clienteIds || [clienteId];
+    
+    if (!targetClients || targetClients.length === 0) {
+      return res.status(400).json({
         success: false,
-        error: 'Cliente no encontrado'
+        error: 'Debe seleccionar al menos un cliente'
       });
     }
     
-    const routine = new Routine({
-      cliente: clienteId,
-      ...routineData
-    });
+    // Verificar que todos los clientes existen
+    const clients = await Client.find({ _id: { $in: targetClients } });
+    if (clients.length !== targetClients.length) {
+      return res.status(404).json({
+        success: false,
+        error: 'Uno o más clientes no encontrados'
+      });
+    }
     
-    await routine.save();
+    // Crear rutina para cada cliente
+    const createdRoutines = [];
+    for (const cId of targetClients) {
+      const routine = new Routine({
+        cliente: cId,
+        ...routineData
+      });
+      await routine.save();
+      createdRoutines.push(routine);
+    }
     
     res.status(201).json({
       success: true,
-      message: 'Rutina creada exitosamente',
-      data: routine
+      message: `${createdRoutines.length} rutina(s) creada(s) exitosamente`,
+      data: createdRoutines
     });
   } catch (error) {
     console.error('Error creando rutina:', error);
@@ -88,7 +104,30 @@ exports.createRoutine = async (req, res) => {
     });
   }
 };
-
+/* ============================================
+   ➕ Crear plantilla (sin asignar clientes)
+============================================ */
+exports.createTemplate = async (req, res) => {
+  try {
+    const templateData = req.body;
+    
+    // Por ahora solo retornamos éxito
+    // Después podemos guardar en una colección separada de templates
+    console.log('📋 Plantilla creada:', templateData.nombre);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Plantilla creada exitosamente',
+      data: templateData
+    });
+  } catch (error) {
+    console.error('Error creando plantilla:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al crear plantilla'
+    });
+  }
+};
 // Actualizar rutina
 exports.updateRoutine = async (req, res) => {
   try {
@@ -142,6 +181,147 @@ exports.deleteRoutine = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error al eliminar rutina'
+    });
+  }
+};
+
+/* ============================================
+   👥 Obtener rutinas agrupadas
+============================================ */
+exports.getGroupedRoutines = async (req, res) => {
+  try {
+    // Agrupar rutinas por nombre (mismo nombre = mismo grupo)
+    const groups = await Routine.aggregate([
+      {
+        $match: { activa: true }
+      },
+      {
+        $group: {
+          _id: '$nombre', // Agrupar por nombre de rutina
+          routineId: { $first: '$_id' }, // ID de la primera rutina del grupo
+          nombre: { $first: '$nombre' },
+          tipo: { $first: '$tipo' },
+          nivel: { $first: '$nivel' },
+          diasSemana: { $first: '$diasSemana' },
+          duracionEstimada: { $first: '$duracionEstimada' },
+          ejercicios: { $first: '$ejercicios' },
+          clientes: { $push: '$cliente' }, // Array de IDs de clientes
+          cantidad: { $sum: 1 }, // Cantidad de clientes
+          createdAt: { $first: '$createdAt' }
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      }
+    ]);
+
+    // Poblar datos de clientes
+    await Routine.populate(groups, {
+      path: 'clientes',
+      select: 'nombre apellido email'
+    });
+
+    res.json({
+      success: true,
+      data: { groups }
+    });
+  } catch (error) {
+    console.error('Error obteniendo rutinas agrupadas:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener grupos'
+    });
+  }
+};
+
+/* ============================================
+   ➕ Agregar cliente a grupo de rutina
+============================================ */
+exports.addClientToGroup = async (req, res) => {
+  try {
+    const { routineId, clienteId } = req.body;
+    
+    // Obtener rutina base
+    const baseRoutine = await Routine.findById(routineId);
+    if (!baseRoutine) {
+      return res.status(404).json({
+        success: false,
+        error: 'Rutina no encontrada'
+      });
+    }
+
+    // Verificar que el cliente no tenga ya esta rutina
+    const exists = await Routine.findOne({
+      nombre: baseRoutine.nombre,
+      cliente: clienteId,
+      activa: true
+    });
+
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        error: 'El cliente ya tiene esta rutina'
+      });
+    }
+
+    // Crear copia de la rutina para el nuevo cliente
+    const newRoutine = new Routine({
+      cliente: clienteId,
+      nombre: baseRoutine.nombre,
+      descripcion: baseRoutine.descripcion,
+      tipo: baseRoutine.tipo,
+      nivel: baseRoutine.nivel,
+      diasSemana: baseRoutine.diasSemana,
+      ejercicios: baseRoutine.ejercicios,
+      duracionEstimada: baseRoutine.duracionEstimada,
+    });
+
+    await newRoutine.save();
+
+    res.json({
+      success: true,
+      message: 'Cliente agregado al grupo',
+      data: newRoutine
+    });
+  } catch (error) {
+    console.error('Error agregando cliente:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al agregar cliente'
+    });
+  }
+};
+
+/* ============================================
+   ✏️ Actualizar grupo de rutinas
+============================================ */
+exports.updateRoutineGroup = async (req, res) => {
+  try {
+    const { routineName, ...updateData } = req.body;
+    
+    if (!routineName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nombre de rutina requerido'
+      });
+    }
+
+    // Actualizar todas las rutinas con ese nombre
+    const result = await Routine.updateMany(
+      { nombre: routineName, activa: true },
+      { $set: updateData }
+    );
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} rutina(s) actualizada(s)`,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error actualizando grupo:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al actualizar grupo'
     });
   }
 };

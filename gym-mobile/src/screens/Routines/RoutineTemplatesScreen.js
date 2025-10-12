@@ -10,7 +10,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
-import { routinesAPI, clientsAPI } from '../../api/axios';
+import { routinesAPI, clientsAPI, groupsAPI } from '../../api/axios';
 
 export default function RoutineTemplatesScreen({ navigation }) {
   const [templates, setTemplates] = useState([]);
@@ -18,6 +18,9 @@ export default function RoutineTemplatesScreen({ navigation }) {
   const [showClientModal, setShowClientModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [clients, setClients] = useState([]);
+  const [selectedClients, setSelectedClients] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [showGroupModal, setShowGroupModal] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -36,30 +39,84 @@ export default function RoutineTemplatesScreen({ navigation }) {
 
   const selectTemplate = async (template) => {
     setSelectedTemplate(template);
+    setSelectedClients([]);
     try {
-      const { data } = await clientsAPI.getAll({ limit: 100 });
-      setClients(data.data.clients);
+      // Cargar clientes
+      const clientsRes = await clientsAPI.getAll({ limit: 100 });
+      setClients(clientsRes.data.data.clients);
+      
+      // Intentar cargar grupos (si falla, continuar sin grupos)
+      try {
+        const groupsRes = await groupsAPI.getAll();
+        setGroups(groupsRes.data.data.groups || []);
+      } catch (groupError) {
+        console.log('No se pudieron cargar grupos (opcional):', groupError);
+        setGroups([]);
+      }
+      
       setShowClientModal(true);
     } catch (error) {
+      console.error('Error cargando clientes:', error);
       Alert.alert('Error', 'No se pudieron cargar los clientes');
     }
   };
 
-  const assignTemplate = async (clientId) => {
+  const toggleClient = (clientId) => {
+    if (selectedClients.includes(clientId)) {
+      setSelectedClients(selectedClients.filter(id => id !== clientId));
+    } else {
+      setSelectedClients([...selectedClients, clientId]);
+    }
+  };
+
+  const selectGroup = (group) => {
+    setSelectedClients(group.clientes.map(c => c._id));
+    setShowGroupModal(false);
+  };
+
+  const assignTemplate = async () => {
+    if (selectedClients.length === 0) {
+      Alert.alert('Error', 'Debes seleccionar al menos un cliente');
+      return;
+    }
+
     try {
-      await routinesAPI.create({
-        clienteId,
-        ...selectedTemplate,
-      });
+      const routineData = {
+        clienteIds: selectedClients,
+        nombre: selectedTemplate.nombre,
+        descripcion: selectedTemplate.descripcion || '',
+        tipo: selectedTemplate.tipo,
+        nivel: selectedTemplate.nivel,
+        diasSemana: selectedTemplate.diasSemana || [],
+        duracionEstimada: selectedTemplate.duracionEstimada || 60,
+        ejercicios: selectedTemplate.ejercicios.map((ej, index) => ({
+          nombre: ej.nombre,
+          descripcion: ej.descripcion || '',
+          series: ej.series,
+          repeticiones: ej.repeticiones,
+          peso: ej.peso || 'A definir',
+          descanso: ej.descanso || '60 seg',
+          grupoMuscular: ej.grupoMuscular,
+          notas: ej.notas || '',
+          orden: ej.orden !== undefined ? ej.orden : index
+        }))
+      };
+
+      console.log('📤 Enviando rutina a múltiples clientes:', routineData);
       
-      Alert.alert('Éxito', 'Rutina creada', [
-        { text: 'OK', onPress: () => {
+      await routinesAPI.create(routineData);
+      
+      Alert.alert(
+        'Éxito', 
+        `✅ Rutina creada para ${selectedClients.length} cliente(s)`, 
+        [{ text: 'OK', onPress: () => {
           setShowClientModal(false);
           navigation.goBack();
-        }}
-      ]);
+        }}]
+      );
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear la rutina');
+      console.error('❌ Error:', error);
+      Alert.alert('Error', error.response?.data?.error || 'No se pudo crear la rutina');
     }
   };
 
@@ -129,28 +186,93 @@ export default function RoutineTemplatesScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleccionar Cliente</Text>
+              <Text style={styles.modalTitle}>
+                Seleccionar Clientes ({selectedClients.length})
+              </Text>
               <TouchableOpacity onPress={() => setShowClientModal(false)}>
                 <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 
+            {groups.length > 0 && (
+              <TouchableOpacity
+                style={styles.groupButton}
+                onPress={() => setShowGroupModal(true)}
+              >
+                <Text style={styles.groupButtonText}>👥 Seleccionar Grupo</Text>
+              </TouchableOpacity>
+            )}
+
             <FlatList
               data={clients}
               keyExtractor={(item) => item._id}
+              renderItem={({ item }) => {
+                const isSelected = selectedClients.includes(item._id);
+                return (
+                  <TouchableOpacity
+                    style={[styles.clientItem, isSelected && styles.clientItemSelected]}
+                    onPress={() => toggleClient(item._id)}
+                  >
+                    <View style={styles.checkbox}>
+                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.clientName}>
+                        {item.nombre} {item.apellido}
+                      </Text>
+                      <Text style={styles.clientEmail}>{item.email}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>No hay clientes</Text>
+              }
+            />
+
+            {selectedClients.length > 0 && (
+              <TouchableOpacity style={styles.confirmButton} onPress={assignTemplate}>
+                <Text style={styles.confirmButtonText}>
+                  ✓ Crear para {selectedClients.length} cliente(s)
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Group Selection Modal */}
+      <Modal
+        visible={showGroupModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowGroupModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '60%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Seleccionar Grupo</Text>
+              <TouchableOpacity onPress={() => setShowGroupModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={groups}
+              keyExtractor={(item) => item._id}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.clientItem}
-                  onPress={() => assignTemplate(item._id)}
+                  style={styles.groupItem}
+                  onPress={() => selectGroup(item)}
                 >
-                  <Text style={styles.clientName}>
-                    {item.nombre} {item.apellido}
+                  <Text style={styles.groupName}>{item.nombre}</Text>
+                  <Text style={styles.groupCount}>
+                    {item.clientes?.length || 0} cliente(s)
                   </Text>
-                  <Text style={styles.clientEmail}>{item.email}</Text>
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>No hay clientes</Text>
+                <Text style={styles.emptyText}>No hay grupos creados</Text>
               }
             />
           </View>
@@ -194,12 +316,22 @@ const styles = StyleSheet.create({
   useButton: { backgroundColor: '#8B5CF6', padding: 12, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   useButtonText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
   modalClose: { fontSize: 28, color: '#6B7280' },
-  clientItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  groupButton: { backgroundColor: '#8B5CF6', margin: 16, marginBottom: 8, padding: 14, borderRadius: 12, alignItems: 'center' },
+  groupButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  clientItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', alignItems: 'center' },
+  clientItemSelected: { backgroundColor: '#EEF2FF' },
+  checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#3B82F6', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  checkmark: { color: '#3B82F6', fontSize: 16, fontWeight: 'bold' },
   clientName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
   clientEmail: { fontSize: 13, color: '#6B7280' },
   emptyText: { textAlign: 'center', color: '#6B7280', fontSize: 14, paddingVertical: 40 },
+  confirmButton: { backgroundColor: '#10B981', margin: 16, marginTop: 8, padding: 16, borderRadius: 12, alignItems: 'center' },
+  confirmButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  groupItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  groupName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
+  groupCount: { fontSize: 13, color: '#8B5CF6' },
 });

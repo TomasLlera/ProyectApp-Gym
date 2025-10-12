@@ -174,103 +174,117 @@ function StatCard({ title, value, icon, color, onPress }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F3F4F6', // Fondo más neutro
   },
+
+  // ⏳ Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F3F4F6',
   },
   loadingText: {
     fontSize: 16,
     color: '#6B7280',
+    fontWeight: '500',
   },
-  header: {
-    backgroundColor: '#fff',
-    padding: 24,
-    paddingTop: 48,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
+
+  // 📊 Grid de estadísticas
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 16,
-    gap: 12,
+    gap: 14,
+    justifyContent: 'space-between',
   },
   statCard: {
-    width: '48%',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 8,
+    width: '47%',
+    borderRadius: 20,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   statIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+    fontSize: 36,
+    marginBottom: 6,
+    textAlign: 'left',
   },
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statTitle: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#fff',
     opacity: 0.9,
   },
+
+  // 🔔 Botón de recordatorios
   reminderButton: {
     backgroundColor: '#F97316',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
+    shadowColor: '#F97316',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
   },
   reminderButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
+
+  // 📋 Sección de vencidos
   section: {
     backgroundColor: '#fff',
-    margin: 16,
-    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderRadius: 18,
     padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: '#111827',
   },
   seeAllText: {
     color: '#3B82F6',
     fontSize: 14,
     fontWeight: '600',
   },
+
+  // 👤 Tarjetas de clientes
   clientCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    borderRadius: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
   },
   clientInfo: {
     flex: 1,
@@ -294,8 +308,9 @@ const styles = StyleSheet.create({
     color: '#DC2626',
   },
   overdueText: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#DC2626',
+    fontWeight: '500',
     marginTop: 2,
   },
 });
