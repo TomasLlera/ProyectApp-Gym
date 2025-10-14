@@ -75,11 +75,20 @@ export const routinesAPI = {
   createTemplate: (data) => axiosInstance.post('/routines/templates', data),
 };
 
+// Grupos rutina endpoint
 export const groupsAPI = {
   getAll: () => axiosInstance.get('/groups'),
   getById: (id) => axiosInstance.get(`/groups/${id}`),
   create: (data) => axiosInstance.post('/groups', data),
   update: (id, data) => axiosInstance.put(`/groups/${id}`, data),
   delete: (id) => axiosInstance.delete(`/groups/${id}`),
+};
+
+// Notifications endpoints
+export const notificationsAPI = {
+  enviarRecordatorios: (diasAntes) => axiosInstance.post('/notifications/recordatorios-vencimiento', null, { params: { diasAntes } }),
+  enviarVencidos: () => axiosInstance.post('/notifications/notificar-vencidos'),
+  enviarMensaje: (data) => axiosInstance.post('/notifications/enviar-mensaje', data),
+  enviarBienvenida: (clienteId) => axiosInstance.post('/notifications/bienvenida', { clienteId }),
 };
 export default axiosInstance;
