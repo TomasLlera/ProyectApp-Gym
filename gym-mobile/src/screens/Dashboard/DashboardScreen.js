@@ -10,7 +10,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { clientsAPI, paymentsAPI } from '../../api/axios';
+import { clientsAPI, paymentsAPI, notificationsAPI } from '../../api/axios';
 
 export default function DashboardScreen({ navigation }) {
   const [stats, setStats] = useState(null);
@@ -55,16 +55,47 @@ export default function DashboardScreen({ navigation }) {
     }
     
     Alert.alert(
-      'Enviar Recordatorios',
-      `¿Enviar recordatorio a ${overdueClients.length} clientes?`,
+      'Enviar Recordatorios WhatsApp',
+      `¿Enviar recordatorio por WhatsApp a ${overdueClients.length} clientes vencidos?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Enviar', 
-          onPress: () => Alert.alert('Éxito', 'Recordatorios enviados (Funcionalidad en desarrollo)')
+          onPress: handleSendReminders
         }
       ]
     );
+  };
+
+  const handleSendReminders = async () => {
+    try {
+      // Mostrar loading
+      Alert.alert('Enviando...', 'Enviando recordatorios por WhatsApp');
+      
+      // Llamar a la API para enviar a todos los vencidos
+      const response = await notificationsAPI.enviarVencidos();
+      
+      if (response.data.success) {
+        const { message, data } = response.data;
+        const enviados = data.filter(r => r.estado === 'enviado').length;
+        const errores = data.filter(r => r.estado === 'error').length;
+        
+        let alertMessage = `✅ ${enviados} mensajes enviados exitosamente`;
+        if (errores > 0) {
+          alertMessage += `\n⚠️ ${errores} mensajes fallaron`;
+        }
+        
+        Alert.alert('Recordatorios Enviados', alertMessage);
+        
+        // Recargar datos para actualizar la vista
+        loadData();
+      } else {
+        Alert.alert('Error', 'No se pudieron enviar los recordatorios');
+      }
+    } catch (error) {
+      console.error('Error enviando recordatorios:', error);
+      Alert.alert('Error', 'Ocurrió un error al enviar los recordatorios');
+    }
   };
 
   if (loading) {

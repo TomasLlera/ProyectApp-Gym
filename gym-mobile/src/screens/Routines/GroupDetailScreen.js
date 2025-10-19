@@ -11,7 +11,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { routinesAPI, clientsAPI } from '../../api/axios';
+import { routinesAPI, clientsAPI, calendarAPI } from '../../api/axios';
 
 export default function GroupDetailScreen({ route, navigation }) {
   const { group: initialGroup } = route.params;
@@ -19,6 +19,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [availableClients, setAvailableClients] = useState([]);
+  const [uploadingCalendar, setUploadingCalendar] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -30,6 +31,7 @@ export default function GroupDetailScreen({ route, navigation }) {
     try {
       const { data } = await routinesAPI.getGrouped();
       const updatedGroup = data.data.groups.find(g => g.nombre === group.nombre);
+      
       if (updatedGroup) {
         setGroup(updatedGroup);
       }
@@ -130,6 +132,88 @@ export default function GroupDetailScreen({ route, navigation }) {
     );
   };
 
+  const subirTodoACalendar = async () => {
+    // Si el array de clientes está vacío pero la cantidad dice que hay clientes,
+    // usar una implementación alternativa
+    if (!group.clientes || group.clientes.length === 0) {
+      if (group.cantidad > 0) {
+        Alert.alert(
+          'Subir a Google Calendar',
+          `Detectamos ${group.cantidad} cliente(s) en este grupo pero necesitamos obtener sus datos.\n\n¿Continuar con la subida usando el ID del grupo?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Continuar',
+              onPress: () => subirPorGrupo()
+            }
+          ]
+        );
+        return;
+      } else {
+        Alert.alert('Error', 'No hay clientes en este grupo');
+        return;
+      }
+    }
+
+    Alert.alert(
+      'Subir Todas a Google Calendar',
+      `¿Subir las ${group.cantidad} rutinas del grupo "${group.nombre}" a Google Calendar?\n\nSe crearán eventos para todos los clientes.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Subir Todo',
+          onPress: async () => {
+            setUploadingCalendar(true);
+            try {
+              // Validar que el primer cliente existe y tiene _id
+              const primerCliente = group.clientes[0];
+              if (!primerCliente || !primerCliente._id) {
+                throw new Error('Cliente no válido en el grupo');
+              }
+              
+              const response = await calendarAPI.subirTodas(primerCliente._id);
+              
+              Alert.alert(
+                '✅ Éxito',
+                `${response.data.totalEventos} eventos creados en Google Calendar\n\n` +
+                `${response.data.detalles.map(d => `${d.rutina}: ${d.eventos || 0} eventos`).join('\n')}`
+              );
+            } catch (error) {
+              console.error('Error:', error);
+              Alert.alert(
+                '❌ Error',
+                error.response?.data?.error || 'No se pudieron subir las rutinas'
+              );
+            } finally {
+              setUploadingCalendar(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const subirPorGrupo = async () => {
+    setUploadingCalendar(true);
+    try {
+      // Usar el routineId del grupo para subir
+      const response = await calendarAPI.subirRutina(group.routineId);
+      
+      Alert.alert(
+        '✅ Éxito',
+        `${response.data.data.eventosCreados} eventos creados en Google Calendar`
+      );
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert(
+        '❌ Error',
+        error.response?.data?.error || 'No se pudo subir la rutina'
+      );
+    } finally {
+      setUploadingCalendar(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -157,6 +241,17 @@ export default function GroupDetailScreen({ route, navigation }) {
         >
           <Text style={styles.actionBtnText}>+ Agregar Cliente</Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
+          onPress={subirTodoACalendar}
+          disabled={uploadingCalendar}
+        >
+          <Text style={styles.actionBtnText}>
+            {uploadingCalendar ? '⏳' : '📅'}
+          </Text>
+        </TouchableOpacity>
+        
         <TouchableOpacity 
           style={[styles.actionBtn, { backgroundColor: '#EF4444' }]}
           onPress={deleteGroup}
@@ -169,27 +264,33 @@ export default function GroupDetailScreen({ route, navigation }) {
         {/* Clientes del Grupo */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Clientes ({group.cantidad})</Text>
-          {group.clientes?.map((cliente) => (
-            <View key={cliente._id} style={styles.clientCard}>
-              <View style={styles.clientAvatar}>
-                <Text style={styles.clientAvatarText}>
-                  {cliente.nombre?.charAt(0)}{cliente.apellido?.charAt(0)}
-                </Text>
+
+          
+          {group.clientes?.length > 0 ? (
+            group.clientes.map((cliente) => (
+              <View key={cliente._id} style={styles.clientCard}>
+                <View style={styles.clientAvatar}>
+                  <Text style={styles.clientAvatarText}>
+                    {cliente.nombre?.charAt(0)}{cliente.apellido?.charAt(0)}
+                  </Text>
+                </View>
+                <View style={styles.clientInfo}>
+                  <Text style={styles.clientName}>
+                    {cliente.nombre} {cliente.apellido}
+                  </Text>
+                  <Text style={styles.clientEmail}>{cliente.email}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeClientFromGroup(cliente)}
+                >
+                  <Text style={styles.removeButtonText}>✕</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.clientInfo}>
-                <Text style={styles.clientName}>
-                  {cliente.nombre} {cliente.apellido}
-                </Text>
-                <Text style={styles.clientEmail}>{cliente.email}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => removeClientFromGroup(cliente)}
-              >
-                <Text style={styles.removeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No hay clientes en este grupo</Text>
+          )}
         </View>
 
         {/* Info de la Rutina */}

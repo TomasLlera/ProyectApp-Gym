@@ -64,12 +64,13 @@ export const paymentsAPI = {
 // Routines endpoints
 export const routinesAPI = {
   getAll: (params) => axiosInstance.get('/routines', { params }),
-  getGrouped: () => axiosInstance.get('/routines/grouped'), // 🔥 NUEVO
+  getGrouped: () => axiosInstance.get('/routines/grouped'),
   getById: (id) => axiosInstance.get(`/routines/${id}`),
+  getClientRoutines: (clienteId) => axiosInstance.get(`/routines/cliente/${clienteId}`), // NUEVO
   create: (data) => axiosInstance.post('/routines', data),
   update: (id, data) => axiosInstance.put(`/routines/${id}`, data),
-  updateGroup: (data) => axiosInstance.put('/routines/group', data), // 🔥 NUEVO
-  addClientToGroup: (data) => axiosInstance.post('/routines/add-client', data), // 🔥 NUEVO
+  updateGroup: (data) => axiosInstance.put('/routines/group', data),
+  addClientToGroup: (data) => axiosInstance.post('/routines/add-client', data),
   delete: (id) => axiosInstance.delete(`/routines/${id}`),
   getTemplates: () => axiosInstance.get('/routines/templates'),
   createTemplate: (data) => axiosInstance.post('/routines/templates', data),
@@ -91,4 +92,13 @@ export const notificationsAPI = {
   enviarMensaje: (data) => axiosInstance.post('/notifications/enviar-mensaje', data),
   enviarBienvenida: (clienteId) => axiosInstance.post('/notifications/bienvenida', { clienteId }),
 };
+
+// Calendar endpoints
+export const calendarAPI = {
+  subirRutina: (routineId) => axiosInstance.post(`/calendar/subir-rutina/${routineId}`),
+  subirTodas: (clienteId) => axiosInstance.post(`/calendar/subir-todas/${clienteId}`),
+  getEventos: () => axiosInstance.get('/calendar/eventos'),
+  eliminarEvento: (eventId) => axiosInstance.delete(`/calendar/eventos/${eventId}`),
+};
+
 export default axiosInstance;

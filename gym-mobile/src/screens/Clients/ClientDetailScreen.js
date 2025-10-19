@@ -14,7 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { clientsAPI } from '../../api/axios';
+import { clientsAPI, calendarAPI } from '../../api/axios';
 
 export default function ClientDetailScreen({ route, navigation }) {
   const { clientId } = route.params;
@@ -22,6 +22,7 @@ export default function ClientDetailScreen({ route, navigation }) {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [uploadingCalendar, setUploadingCalendar] = useState(false);
 
   // 🔥 AUTO-REFRESH: Cargar datos al entrar a la pantalla
   useFocusEffect(
@@ -118,6 +119,42 @@ export default function ClientDetailScreen({ route, navigation }) {
     }
   };
 
+  const subirRutinasACalendar = async () => {
+    if (!client) return;
+
+    Alert.alert(
+      'Subir a Google Calendar',
+      `¿Enviar todas las rutinas de ${client.nombre} a su Google Calendar?\n\nEl cliente recibirá los eventos en su email.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Enviar',
+          onPress: async () => {
+            setUploadingCalendar(true);
+            try {
+              const response = await calendarAPI.subirTodas(clientId);
+              
+              Alert.alert(
+                '✅ Éxito',
+                `${response.data.data.totalEventos} eventos creados en Google Calendar\n\n${response.data.data.detalles
+                  .map(d => `✓ ${d.rutina}: ${d.eventos} eventos`)
+                  .join('\n')}`
+              );
+            } catch (error) {
+              console.error('Error:', error);
+              Alert.alert(
+                '❌ Error',
+                error.response?.data?.error || 'No se pudieron subir las rutinas a Google Calendar'
+              );
+            } finally {
+              setUploadingCalendar(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const getStatusColor = (status) => {
     const colors = { pagado: '#10B981', vencido: '#EF4444', pendiente: '#F59E0B' };
     return colors[status] || colors.pendiente;
@@ -168,16 +205,41 @@ export default function ClientDetailScreen({ route, navigation }) {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#3B82F6' }]} onPress={() => setShowEditModal(true)}>
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: '#3B82F6' }]} 
+          onPress={() => setShowEditModal(true)}
+        >
           <Text style={styles.actionButtonText}>✏️ Editar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#F97316' }]} onPress={sendEmail}>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}
+          onPress={subirRutinasACalendar}
+          disabled={uploadingCalendar}
+        >
+          <Text style={styles.actionButtonText}>
+            {uploadingCalendar ? '⏳ Enviando...' : '📅 Google Calendar'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: '#F97316' }]} 
+          onPress={sendEmail}
+        >
           <Text style={styles.actionButtonText}>📧 Email</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#10B981' }]} onPress={sendWhatsApp}>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: '#10B981' }]} 
+          onPress={sendWhatsApp}
+        >
           <Text style={styles.actionButtonText}>💬 WhatsApp</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#EF4444' }]} onPress={deleteClient}>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: '#EF4444' }]} 
+          onPress={deleteClient}
+        >
           <Text style={styles.actionButtonText}>🗑️ Eliminar</Text>
         </TouchableOpacity>
       </View>

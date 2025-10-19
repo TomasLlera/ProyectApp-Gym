@@ -10,12 +10,13 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import { routinesAPI } from '../../api/axios';
+import { routinesAPI, calendarAPI } from '../../api/axios';
 
 export default function RoutineDetailScreen({ route, navigation }) {
   const { routineId } = route.params;
   const [routine, setRoutine] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploadingCalendar, setUploadingCalendar] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -34,6 +35,38 @@ export default function RoutineDetailScreen({ route, navigation }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const subirACalendar = async () => {
+    Alert.alert(
+      'Subir a Google Calendar',
+      `¿Subir la rutina "${routine.nombre}" a Google Calendar?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Subir',
+          onPress: async () => {
+            setUploadingCalendar(true);
+            try {
+              const response = await calendarAPI.subirRutina(routineId);
+              
+              Alert.alert(
+                '✅ Éxito',
+                `${response.data.data.eventosCreados} eventos creados en Google Calendar`
+              );
+            } catch (error) {
+              console.error('Error:', error);
+              Alert.alert(
+                '❌ Error',
+                error.response?.data?.error || 'No se pudo subir la rutina'
+              );
+            } finally {
+              setUploadingCalendar(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const shareRoutine = () => {
@@ -89,6 +122,16 @@ export default function RoutineDetailScreen({ route, navigation }) {
           onPress={shareRoutine}
         >
           <Text style={styles.actionBtnText}>💬 Compartir</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.actionBtn, { backgroundColor: '#8B5CF6', marginTop: 12 }]}
+          onPress={subirACalendar}
+          disabled={uploadingCalendar}
+        >
+          <Text style={styles.actionBtnText}>
+            {uploadingCalendar ? '⏳ Subiendo...' : '📅 Google Calendar'}
+          </Text>
         </TouchableOpacity>
       </View>
 
