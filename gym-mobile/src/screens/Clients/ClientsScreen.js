@@ -16,9 +16,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { clientsAPI } from '../../api/axios';
+import { useDatabase } from '../../context/DatabaseContext';
 
 export default function ClientsScreen({ navigation, route }) {
-  const [clients, setClients] = useState([]);
+  const { clients } = useDatabase();
+  const [clientsList, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,14 +41,9 @@ export default function ClientsScreen({ navigation, route }) {
 
   const loadClients = async () => {
     try {
-      const params = {};
-      if (searchTerm) params.search = searchTerm;
-      if (statusFilter) params.status = statusFilter;
-
-      const { data } = await clientsAPI.getAll(params);
-      setClients(data.data.clients);
+      const clientesList = await clients.getAll();
+      setClients(clientesList);
     } catch (error) {
-      console.error('Error:', error);
       Alert.alert('Error', 'No se pudieron cargar los clientes');
     } finally {
       setLoading(false);
@@ -200,7 +197,7 @@ export default function ClientsScreen({ navigation, route }) {
 
       {/* Client List */}
       <FlatList
-        data={clients}
+        data={clientsList}
         renderItem={renderClient}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContainer}
