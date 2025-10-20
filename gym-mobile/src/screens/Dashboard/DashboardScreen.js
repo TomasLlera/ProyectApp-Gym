@@ -123,6 +123,22 @@ export default function DashboardScreen({ navigation }) {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      {/* Ingresos Card - Movido al principio */}
+      <TouchableOpacity 
+        style={styles.revenueCardTop}
+        onPress={() => navigation.navigate('Statistics')}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.revenueIcon}>💰</Text>
+        <View style={styles.revenueInfo}>
+          <Text style={styles.revenueTitle}>Ingresos del Mes</Text>
+          <Text style={styles.revenueValue}>
+            ${(stats?.ingresosMes || 0).toLocaleString()}
+          </Text>
+        </View>
+        <Text style={styles.revenueArrow}>→</Text>
+      </TouchableOpacity>
+
       {/* Stats Cards */}
       <View style={styles.statsGrid}>
         <StatCard
@@ -155,23 +171,17 @@ export default function DashboardScreen({ navigation }) {
         />
       </View>
 
-      {/* Ingresos Card */}
-      <View style={styles.revenueCard}>
-        <Text style={styles.revenueIcon}>💰</Text>
-        <View style={styles.revenueInfo}>
-          <Text style={styles.revenueTitle}>Ingresos del Mes</Text>
-          <Text style={styles.revenueValue}>
-            ${(stats?.ingresosMes || 0).toLocaleString()}
-          </Text>
-        </View>
-      </View>
-
       {/* Send Reminders Button */}
       {stats?.clientesVencidos > 0 && (
         <TouchableOpacity style={styles.reminderButton} onPress={sendReminders}>
-          <Text style={styles.reminderButtonText}>
-            📢 Enviar Recordatorios ({stats?.clientesVencidos})
-          </Text>
+          <View style={styles.reminderButtonContent}>
+            <Text style={styles.reminderButtonText}>
+              📢 Enviar Recordatorios
+            </Text>
+            <View style={styles.reminderCountBadge}>
+              <Text style={styles.reminderCountText}>{stats?.clientesVencidos}</Text>
+            </View>
+          </View>
         </TouchableOpacity>
       )}
 
@@ -264,12 +274,11 @@ function StatCard({ title, value, icon, color, onPress }) {
       activeOpacity={0.8}
     >
       <View style={styles.statCardContent}>
-        <Text style={styles.statIcon}>{icon}</Text>
-        <View style={styles.statInfo}>
+        <View style={styles.statIconRow}>
+          <Text style={styles.statIcon}>{icon}</Text>
           <Text style={styles.statValue}>{value}</Text>
-          <Text style={styles.statTitle}>{title}</Text>
         </View>
-        {onPress && <Text style={styles.statArrow}>→</Text>}
+        <Text style={styles.statTitle}>{title}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -294,75 +303,89 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  //  Grid de estadísticas
+  // 📊 Grid de estadísticas (Diseño cuadrado compacto)
   statsGrid: {
-    flexDirection: 'column',
-    padding: 20,
-    gap: 16,
-    paddingTop: 40,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    paddingVertical: 0,
+    gap: 6,
+    justifyContent: 'space-between',
   },
   statCard: {
-    width: '100%',
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 24,
+    width: '48%',
+    aspectRatio: 1.3,
+    borderRadius: 12,
+    padding: 8,
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    transform: [{ scale: 1 }],
   },
   statCardContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 2,
+    marginBottom: 8,
   },
   statIcon: {
-    fontSize: 40,
+    fontSize: 28,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-    marginRight: 16,
-  },
-  statInfo: {
-    flex: 1,
-    alignItems: 'flex-start',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    marginRight: 8,
   },
   statValue: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '900',
     color: '#fff',
-    marginBottom: 2,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
-    letterSpacing: 1,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+    letterSpacing: 0.5,
   },
   statTitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#fff',
     opacity: 0.95,
     fontWeight: '700',
-    textAlign: 'left',
+    textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statArrow: {
-    fontSize: 24,
-    color: '#fff',
-    opacity: 0.9,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    letterSpacing: 0.4,
+    marginTop: 4,
   },
 
-  // 💰 Tarjeta de ingresos
+  // 💰 Tarjeta de ingresos (en la parte superior)
+  revenueCardTop: {
+    backgroundColor: '#8B5CF6',
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 12,
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    transform: [{ scale: 1 }],
+  },
+  // 💰 Tarjeta de ingresos (versión anterior)
   revenueCard: {
     backgroundColor: '#8B5CF6',
     marginHorizontal: 20,
@@ -379,54 +402,90 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   revenueIcon: {
-    fontSize: 56,
-    marginRight: 20,
+    fontSize: 40,
+    marginRight: 14,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   revenueInfo: {
     flex: 1,
   },
   revenueTitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
     opacity: 0.9,
-    marginBottom: 6,
+    marginBottom: 4,
     fontWeight: '500',
   },
   revenueValue: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  revenueArrow: {
+    fontSize: 20,
+    color: '#fff',
+    opacity: 0.9,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginLeft: 10,
   },
 
   // 🔔 Botón de recordatorios
   reminderButton: {
     backgroundColor: '#F97316',
     marginHorizontal: 20,
-    marginVertical: 16,
-    paddingVertical: 16,
+    marginVertical: 12,
+    paddingVertical: 12,
     borderRadius: 20,
     alignItems: 'center',
     shadowColor: '#F97316',
     shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    transform: [{ scale: 1 }],
+  },
+  reminderButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   reminderButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+    marginRight: 10,
+  },
+  reminderCountBadge: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 2,
+    borderColor: '#FDE68A',
+    shadowColor: '#D97706',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  reminderCountText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#D97706',
   },
 
   // 📋 Sección de vencidos
@@ -434,13 +493,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginHorizontal: 20,
     marginBottom: 30,
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 24,
+    padding: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 2,
     borderColor: '#F1F5F9',
   },
   sectionHeader: {
@@ -465,11 +525,16 @@ const styles = StyleSheet.create({
   },
   clientCountBadge: {
     backgroundColor: '#DCFCE7',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#BBF7D0',
+    shadowColor: '#16A34A',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   clientCountText: {
     fontSize: 12,
@@ -483,14 +548,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 20,
+    borderWidth: 2,
     borderColor: '#C7D2FE',
     shadowColor: '#4F46E5',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
     minWidth: '100%',
+    transform: [{ scale: 1 }],
   },
   seeAllText: {
     color: '#4F46E5',
@@ -510,12 +577,18 @@ const styles = StyleSheet.create({
   viewAllClientsButton: {
     backgroundColor: '#F3F4F6',
     marginTop: 12,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 18,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#D1D5DB',
     borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    transform: [{ scale: 1 }],
   },
   viewAllClientsText: {
     color: '#6B7280',
@@ -526,17 +599,19 @@ const styles = StyleSheet.create({
   // 👤 Tarjetas de clientes
   clientCard: {
     backgroundColor: '#F0FDF4',
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 20,
     marginBottom: 12,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#BBF7D0',
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: '#16A34A',
     shadowColor: '#16A34A',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+    transform: [{ scale: 1 }],
   },
   clientCompactInfo: {
     flex: 1,
@@ -573,11 +648,17 @@ const styles = StyleSheet.create({
   paidText: {
     fontSize: 11,
     color: '#16A34A',
-    fontWeight: '600',
+    fontWeight: '700',
     backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
     textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    shadowColor: '#16A34A',
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });

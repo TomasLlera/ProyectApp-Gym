@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useAppConfig } from '../context/AppConfigContext';
 
 
 // Screens
@@ -13,6 +14,7 @@ import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 import ClientsScreen from '../screens/Clients/ClientsScreen';
 import ClientDetailScreen from '../screens/Clients/ClientDetailScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
+import StatisticsScreen from '../screens/Profile/StatisticsScreen';
 import RoutinesScreen from '../screens/Routines/RoutinesScreen';
 import RoutineDetailScreen from '../screens/Routines/RoutineDetailScreen';
 import RoutineTemplatesScreen from '../screens/Routines/RoutineTemplatesScreen';
@@ -28,6 +30,8 @@ function TabIcon({ icon }) {
 }
 
 function TabNavigator() {
+  const { appName } = useAppConfig();
+  
   return (
     <Tab.Navigator
       screenOptions={{
@@ -54,7 +58,7 @@ function TabNavigator() {
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          title: '🏋️ Mi Gimnasio',
+          title: `🏋️ ${appName}`,
           tabBarLabel: 'Inicio',
           tabBarIcon: ({ color }) => <TabIcon icon="📊" />,
         }}
@@ -166,6 +170,13 @@ export default function AppNavigator() {
                 headerStyle: { backgroundColor: '#4F46E5' },
                 headerTintColor: '#fff',
                 headerBackTitle: 'Volver',
+              }}
+            />
+            <Stack.Screen
+              name="Statistics"
+              component={StatisticsScreen}
+              options={{
+                headerShown: false,
               }}
             />
           </>
