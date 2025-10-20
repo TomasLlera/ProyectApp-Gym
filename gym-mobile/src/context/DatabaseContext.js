@@ -10,6 +10,7 @@ export const DatabaseProvider = ({ children }) => {
   const value = {
     clients: clientService,
     routines: routineService,
+    // payments: paymentService, // TODO: Implementar cuando sea necesario
   };
 
   return (

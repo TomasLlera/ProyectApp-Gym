@@ -52,7 +52,7 @@ const createTables = async () => {
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS rutinas (
         id TEXT PRIMARY KEY,
-        clienteId TEXT NOT NULL,
+        clienteId TEXT, -- Permitir NULL para plantillas
         nombre TEXT NOT NULL,
         descripcion TEXT,
         tipo TEXT DEFAULT 'personalizado',
@@ -149,9 +149,51 @@ const createTables = async () => {
     `);
 
     console.log('✅ Todas las tablas creadas');
+    
+    // Ejecutar migraciones
+    await runMigrations();
   } catch (error) {
     console.error('❌ Error creando tablas:', error);
     throw error;
+  }
+};
+
+const runMigrations = async () => {
+  try {
+    // Migración 1: Permitir clienteId NULL en rutinas para plantillas
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS rutinas_new (
+        id TEXT PRIMARY KEY,
+        clienteId TEXT, -- Permitir NULL para plantillas
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        tipo TEXT DEFAULT 'personalizado',
+        nivel TEXT DEFAULT 'principiante',
+        duracionEstimada INTEGER DEFAULT 60,
+        activa INTEGER DEFAULT 1,
+        fechaInicio TEXT DEFAULT CURRENT_TIMESTAMP,
+        notas TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(clienteId) REFERENCES clientes(id)
+      );
+    `);
+
+    // Copiar datos existentes
+    await db.execAsync(`
+      INSERT OR IGNORE INTO rutinas_new 
+      SELECT * FROM rutinas;
+    `);
+
+    // Reemplazar tabla original
+    await db.execAsync(`DROP TABLE IF EXISTS rutinas_old;`);
+    await db.execAsync(`ALTER TABLE rutinas RENAME TO rutinas_old;`);
+    await db.execAsync(`ALTER TABLE rutinas_new RENAME TO rutinas;`);
+    await db.execAsync(`DROP TABLE IF EXISTS rutinas_old;`);
+
+    console.log('✅ Migraciones completadas');
+  } catch (error) {
+    console.log('ℹ️ Migraciones omitidas (tabla ya actualizada):', error.message);
   }
 };
 

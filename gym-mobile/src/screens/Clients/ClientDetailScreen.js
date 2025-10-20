@@ -15,14 +15,20 @@ import {
   Platform,
 } from 'react-native';
 import { clientsAPI, calendarAPI } from '../../api/axios';
+import { useDatabase } from '../../context/DatabaseContext';
 
 export default function ClientDetailScreen({ route, navigation }) {
   const { clientId } = route.params;
+  console.log('ClientDetail recibió clientId:', clientId);  // DEBUG
+  
   const [client, setClient] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [uploadingCalendar, setUploadingCalendar] = useState(false);
+  
+  // AGREGAR ESTO
+  const { clients } = useDatabase();
 
   // 🔥 AUTO-REFRESH: Cargar datos al entrar a la pantalla
   useFocusEffect(
@@ -33,9 +39,19 @@ export default function ClientDetailScreen({ route, navigation }) {
 
   const loadClientData = async () => {
     try {
-      const { data } = await clientsAPI.getById(clientId);
-      setClient(data.data.client);
-      setPayments(data.data.payments || []);
+      // Primero intentar desde SQLite
+      const clientData = await clients.getById(clientId);
+      
+      if (clientData) {
+        setClient(clientData);
+        console.log('✅ Cliente cargado desde SQLite');
+      } else {
+        // Si no está en SQLite, intentar desde API
+        const { data } = await clientsAPI.getById(clientId);
+        setClient(data.data.client);
+        setPayments(data.data.payments || []);
+        console.log('✅ Cliente cargado desde API');
+      }
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'No se pudieron cargar los datos');
@@ -82,13 +98,14 @@ export default function ClientDetailScreen({ route, navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await clientsAPI.delete(clientId);
+              // Usar SQLite en lugar de API
+              await clients.delete(clientId);
               Alert.alert('Éxito', 'Cliente eliminado', [
                 { text: 'OK', onPress: () => navigation.navigate('Clientes', { refresh: Date.now() }) }
               ]);
             } catch (error) {
               console.error('Error deleting client:', error);
-              Alert.alert('Error', error.response?.data?.error || 'No se pudo eliminar el cliente');
+              Alert.alert('Error', 'No se pudo eliminar el cliente');
             }
           }
         }
@@ -109,13 +126,15 @@ export default function ClientDetailScreen({ route, navigation }) {
 
   const updatePaymentStatus = async (status) => {
     try {
-      await clientsAPI.updatePayment(clientId, status);
+      // Actualizar en SQLite
+      await clients.updatePaymentStatus(clientId, status);
       Alert.alert('Éxito', 'Estado actualizado');
-      // 🔥 Recargar datos automáticamente después de actualizar
+      
+      // Recargar datos
       setTimeout(() => loadClientData(), 300);
     } catch (error) {
-      console.error('Error updating payment:', error);
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo actualizar el estado');
+      console.error('Error actualizando pago:', error);
+      Alert.alert('Error', 'No se pudo actualizar el estado');
     }
   };
 
@@ -188,14 +207,26 @@ export default function ClientDetailScreen({ route, navigation }) {
     <ScrollView style={styles.container}>
       {/* Client Header */}
       <View style={styles.header}>
-        <View style={styles.avatar}>
+        <View style={[styles.avatar, { 
+          borderColor: getStatusColor(client.estadoPago),
+          borderWidth: 3
+        }]}>
           <Text style={styles.avatarText}>{client.nombre.charAt(0)}{client.apellido.charAt(0)}</Text>
         </View>
         <Text style={styles.clientName}>{client.nombre} {client.apellido}</Text>
         <Text style={styles.clientEmail}>{client.email}</Text>
 
         <TouchableOpacity
-          style={[styles.statusBadge, { backgroundColor: getStatusColor(client.estadoPago) }]}
+          style={[styles.statusBadge, { 
+            backgroundColor: getStatusColor(client.estadoPago),
+            borderWidth: 2,
+            borderColor: getStatusColor(client.estadoPago) + '80',
+            shadowColor: getStatusColor(client.estadoPago),
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 4,
+          }]}
           onPress={changePaymentStatus}
         >
           <Text style={styles.statusText}>{getStatusLabel(client.estadoPago)}</Text>
@@ -206,14 +237,22 @@ export default function ClientDetailScreen({ route, navigation }) {
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: '#3B82F6' }]} 
+          style={[styles.actionButton, { 
+            backgroundColor: '#3B82F6',
+            borderWidth: 2,
+            borderColor: '#1E40AF'
+          }]} 
           onPress={() => setShowEditModal(true)}
         >
           <Text style={styles.actionButtonText}>✏️ Editar</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}
+          style={[styles.actionButton, { 
+            backgroundColor: '#8B5CF6',
+            borderWidth: 2,
+            borderColor: '#6D28D9'
+          }]}
           onPress={subirRutinasACalendar}
           disabled={uploadingCalendar}
         >
@@ -223,21 +262,33 @@ export default function ClientDetailScreen({ route, navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: '#F97316' }]} 
+          style={[styles.actionButton, { 
+            backgroundColor: '#F97316',
+            borderWidth: 2,
+            borderColor: '#C2410C'
+          }]} 
           onPress={sendEmail}
         >
           <Text style={styles.actionButtonText}>📧 Email</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: '#10B981' }]} 
+          style={[styles.actionButton, { 
+            backgroundColor: '#10B981',
+            borderWidth: 2,
+            borderColor: '#047857'
+          }]} 
           onPress={sendWhatsApp}
         >
           <Text style={styles.actionButtonText}>💬 WhatsApp</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: '#EF4444' }]} 
+          style={[styles.actionButton, { 
+            backgroundColor: '#EF4444',
+            borderWidth: 2,
+            borderColor: '#B91C1C'
+          }]} 
           onPress={deleteClient}
         >
           <Text style={styles.actionButtonText}>🗑️ Eliminar</Text>
@@ -309,7 +360,7 @@ export default function ClientDetailScreen({ route, navigation }) {
 // InfoRow Component
 function InfoRow({ label, value, highlight }) {
   return (
-    <View style={styles.infoRow}>
+    <View style={[styles.infoRow, highlight && styles.infoRowHighlight]}>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={[styles.infoValue, highlight && styles.infoValueHighlight]}>{value}</Text>
     </View>
@@ -328,6 +379,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
     montoMensual: client?.montoMensual?.toString() || '',
   });
   const [loading, setLoading] = useState(false);
+  const { clients } = useDatabase();  // AGREGAR ESTO
 
   useEffect(() => {
     if (client) {
@@ -351,11 +403,17 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
 
     setLoading(true);
     try {
-      await clientsAPI.update(client._id, { ...formData, montoMensual: parseFloat(formData.montoMensual) });
+      // Intentar actualizar en SQLite primero
+      await clients.update(client._id || client.id, {
+        ...formData,
+        montoMensual: parseFloat(formData.montoMensual)
+      });
+      
       Alert.alert('Éxito', '✅ Cliente actualizado exitosamente');
       onSuccess();
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'Error al actualizar cliente');
+      console.error('Error actualizando:', error);
+      Alert.alert('Error', 'No se pudo actualizar el cliente');
     } finally {
       setLoading(false);
     }
@@ -412,21 +470,93 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontSize: 16, color: '#6B7280' },
-  header: { backgroundColor: '#fff', padding: 24, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#4F46E5', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  header: { 
+    backgroundColor: '#fff', 
+    padding: 24, 
+    alignItems: 'center', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatar: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: '#4F46E5', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+  },
   avatarText: { fontSize: 32, color: '#fff', fontWeight: 'bold' },
   clientName: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
   clientEmail: { fontSize: 14, color: '#6B7280', marginBottom: 12 },
-  statusBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  statusBadge: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    borderRadius: 20 
+  },
   statusText: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
   statusHint: { color: '#fff', fontSize: 10, opacity: 0.8, textAlign: 'center', marginTop: 2 },
-  actionButtons: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 8 },
-  actionButton: { flex: 1, minWidth: '45%', padding: 12, borderRadius: 12, alignItems: 'center' },
+  actionButtons: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    padding: 16, 
+    gap: 8 
+  },
+  actionButton: { 
+    flex: 1, 
+    minWidth: '45%', 
+    padding: 12, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   actionButtonText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  section: { backgroundColor: '#fff', margin: 16, padding: 16, borderRadius: 12 },
+  section: { 
+    backgroundColor: '#fff', 
+    margin: 16, 
+    padding: 16, 
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  infoLabel: { fontSize: 14, color: '#6B7280' },
+  infoRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 4,
+  },
+  infoRowHighlight: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    borderBottomColor: '#DBEAFE',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  infoLabel: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
   infoValue: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
   infoValueHighlight: { fontSize: 18, color: '#3B82F6', fontWeight: 'bold' },
   emptyPayments: { alignItems: 'center', paddingVertical: 40 },

@@ -1,13 +1,17 @@
 // src/database/clientService.js
 
 import { getDatabase } from './db';
-import { v4 as uuidv4 } from 'react-native-uuid';
+
+// Función simple para generar ID único
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+};
 
 export const clientService = {
   // Crear cliente
   create: async (clientData) => {
     const db = getDatabase();
-    const id = uuidv4();
+    const id = generateId();
     
     try {
       await db.runAsync(
@@ -67,6 +71,11 @@ export const clientService = {
   update: async (id, clientData) => {
     const db = getDatabase();
     try {
+      // Validar campos requeridos
+      if (!clientData.nombre || !clientData.apellido || !clientData.email || !clientData.documento) {
+        throw new Error('Campos requeridos faltantes: nombre, apellido, email, documento');
+      }
+
       await db.runAsync(
         `UPDATE clientes SET 
           nombre = ?, apellido = ?, email = ?, 
@@ -75,13 +84,13 @@ export const clientService = {
           updatedAt = CURRENT_TIMESTAMP
         WHERE id = ?`,
         [
-          clientData.nombre,
-          clientData.apellido,
-          clientData.email,
-          clientData.documento,
-          clientData.telefono,
-          clientData.tipoPlan,
-          clientData.montoMensual,
+          clientData.nombre.trim(),
+          clientData.apellido.trim(),
+          clientData.email.trim(),
+          clientData.documento.trim(),
+          clientData.telefono || null,
+          clientData.tipoPlan || 'mensual',
+          clientData.montoMensual || 0,
           id
         ]
       );

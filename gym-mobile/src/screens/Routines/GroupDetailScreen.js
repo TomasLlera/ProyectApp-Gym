@@ -11,10 +11,41 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { routinesAPI, clientsAPI, calendarAPI } from '../../api/axios';
+import { useDatabase } from '../../context/DatabaseContext';
+import { calendarAPI } from '../../api/axios';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+// Importar la instancia configurada de axios
+const axiosInstance = axios.create({
+  baseURL: 'http://192.168.0.83:3000/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+// Interceptor para agregar token automáticamente
+axiosInstance.interceptors.request.use(
+  async (config) => {
+    const token = await SecureStore.getItemAsync('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔐 Token agregado a la petición del grupo');
+    } else {
+      console.log('❌ No hay token disponible para el grupo');
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default function GroupDetailScreen({ route, navigation }) {
   const { group: initialGroup } = route.params;
+  const { routines, clients } = useDatabase();
+  
   const [group, setGroup] = useState(initialGroup);
   const [loading, setLoading] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
@@ -29,8 +60,8 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   const refreshGroup = async () => {
     try {
-      const { data } = await routinesAPI.getGrouped();
-      const updatedGroup = data.data.groups.find(g => g.nombre === group.nombre);
+      const groups = await routines.getGrouped();
+      const updatedGroup = groups.find(g => g.nombre === group.nombre);
       
       if (updatedGroup) {
         setGroup(updatedGroup);
@@ -43,16 +74,24 @@ export default function GroupDetailScreen({ route, navigation }) {
   const openAddClientModal = async () => {
     try {
       setLoading(true);
-      const { data } = await clientsAPI.getAll({ limit: 100 });
+      console.log('🔄 Cargando clientes para modal...');
       
-      // Filtrar clientes que NO están en el grupo
-      const clientsInGroup = group.clientes.map(c => c._id);
-      const filtered = data.data.clients.filter(c => !clientsInGroup.includes(c._id));
+      const allClients = await clients.getAll();
+      console.log('✅ Clientes cargados:', allClients.length);
       
+      // Filtrar clientes que NO están en el grupo (manejo seguro de clientes)
+      const clientsInGroup = (group.clientes || []).map(c => c.id || c._id || c.clienteId);
+      const filtered = allClients.filter(c => {
+        const clientId = c.id || c._id;
+        return clientId && !clientsInGroup.includes(clientId);
+      });
+      
+      console.log('✅ Clientes disponibles:', filtered.length);
       setAvailableClients(filtered);
       setShowAddClientModal(true);
     } catch (error) {
-      Alert.alert('Error', 'No se pudieron cargar los clientes');
+      console.error('❌ Error cargando clientes:', error);
+      Alert.alert('Error', `No se pudieron cargar los clientes: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -60,16 +99,49 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   const addClientToGroup = async (clientId) => {
     try {
-      await routinesAPI.addClientToGroup({
-        routineId: group.routineId,
-        clienteId: clientId
-      });
+      console.log('🔄 Agregando cliente al grupo:', clientId);
+      
+      // Obtener todas las rutinas del grupo para usar como plantilla
+      const allRoutines = await routines.getAll();
+      console.log('✅ Rutinas cargadas:', allRoutines.length);
+      
+      const templateRoutine = allRoutines.find(r => 
+        r.nombre === group.nombre && r.clienteId !== null
+      );
+      
+      if (!templateRoutine) {
+        Alert.alert('Error', 'No se encontró la plantilla del grupo');
+        return;
+      }
+
+      console.log('✅ Plantilla encontrada:', templateRoutine.id);
+
+      // Obtener los ejercicios de la rutina plantilla
+      const templateWithExercises = await routines.getById(templateRoutine.id);
+      console.log('✅ Ejercicios cargados:', templateWithExercises.ejercicios?.length || 0);
+
+      // Crear una nueva rutina para el cliente usando la plantilla completa
+      const newRoutineData = {
+        nombre: templateWithExercises.nombre,
+        descripcion: templateWithExercises.descripcion,
+        tipo: templateWithExercises.tipo,
+        nivel: templateWithExercises.nivel,
+        duracionMinutos: templateWithExercises.duracionMinutos || templateWithExercises.duracionEstimada,
+        objetivos: templateWithExercises.objetivos,
+        diasSemana: templateWithExercises.diasSemana || [],
+        ejercicios: templateWithExercises.ejercicios || [],
+        activa: true
+      };
+
+      const result = await routines.create(clientId, newRoutineData);
+      console.log('✅ Rutina creada para cliente:', result.id);
       
       Alert.alert('Éxito', 'Cliente agregado al grupo');
       setShowAddClientModal(false);
       refreshGroup();
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo agregar el cliente');
+      console.error('❌ Error agregando cliente al grupo:', error);
+      Alert.alert('Error', `No se pudo agregar el cliente al grupo: ${error.message}`);
     }
   };
 
@@ -84,16 +156,21 @@ export default function GroupDetailScreen({ route, navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Buscar y eliminar la rutina específica de este cliente
-              const { data } = await routinesAPI.getAll({ clienteId: cliente._id });
-              const routineToDelete = data.data.routines.find(r => r.nombre === group.nombre);
+              // Buscar y eliminar la rutina específica de este cliente usando SQLite
+              const allRoutines = await routines.getAll();
+              const routineToDelete = allRoutines.find(r => 
+                r.nombre === group.nombre && (r.clienteId === cliente.id || r.clienteId === cliente._id)
+              );
               
               if (routineToDelete) {
-                await routinesAPI.delete(routineToDelete._id);
+                await routines.delete(routineToDelete.id);
                 Alert.alert('Éxito', 'Cliente quitado del grupo');
                 refreshGroup();
+              } else {
+                Alert.alert('Error', 'No se encontró la rutina del cliente');
               }
             } catch (error) {
+              console.error('Error removing client:', error);
               Alert.alert('Error', 'No se pudo quitar el cliente');
             }
           }
@@ -113,17 +190,20 @@ export default function GroupDetailScreen({ route, navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Obtener todas las rutinas del grupo
-              const { data } = await routinesAPI.getAll();
-              const routinesToDelete = data.data.routines.filter(r => r.nombre === group.nombre);
+              // Obtener todas las rutinas del grupo usando SQLite
+              const allRoutines = await routines.getAll();
+              const routinesToDelete = allRoutines.filter(r => r.nombre === group.nombre);
               
-              // Eliminar todas
-              await Promise.all(routinesToDelete.map(r => routinesAPI.delete(r._id)));
+              // Eliminar todas las rutinas del grupo
+              for (const routine of routinesToDelete) {
+                await routines.delete(routine.id);
+              }
               
               Alert.alert('Éxito', 'Grupo eliminado', [
                 { text: 'OK', onPress: () => navigation.goBack() }
               ]);
             } catch (error) {
+              console.error('Error deleting group:', error);
               Alert.alert('Error', 'No se pudo eliminar el grupo');
             }
           }
@@ -133,8 +213,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   };
 
   const subirTodoACalendar = async () => {
-    // Si el array de clientes está vacío pero la cantidad dice que hay clientes,
-    // usar una implementación alternativa
+    // Verificar si hay clientes en el grupo
     if (!group.clientes || group.clientes.length === 0) {
       if (group.cantidad > 0) {
         Alert.alert(
@@ -165,13 +244,30 @@ export default function GroupDetailScreen({ route, navigation }) {
           onPress: async () => {
             setUploadingCalendar(true);
             try {
-              // Validar que el primer cliente existe y tiene _id
+              console.log('🚀 Intentando subir grupo completo...');
+              
+              // Validar que el primer cliente existe y tiene id
               const primerCliente = group.clientes[0];
-              if (!primerCliente || !primerCliente._id) {
+              if (!primerCliente || (!primerCliente.id && !primerCliente._id)) {
                 throw new Error('Cliente no válido en el grupo');
               }
               
-              const response = await calendarAPI.subirTodas(primerCliente._id);
+              // Preparar datos completos del grupo para el servidor
+              const groupData = {
+                nombre: group.nombre,
+                descripcion: group.descripcion,
+                tipo: group.tipo,
+                nivel: group.nivel,
+                duracionEstimada: group.duracionEstimada,
+                diasSemana: group.diasSemana,
+                ejercicios: group.ejercicios,
+                clientes: group.clientes,
+                cantidad: group.cantidad
+              };
+              
+              console.log('📤 Datos del grupo a enviar:', groupData);
+              
+              const response = await axiosInstance.post('/calendar/subir-grupo-completo', groupData);
               
               Alert.alert(
                 '✅ Éxito',
@@ -179,11 +275,20 @@ export default function GroupDetailScreen({ route, navigation }) {
                 `${response.data.detalles.map(d => `${d.rutina}: ${d.eventos || 0} eventos`).join('\n')}`
               );
             } catch (error) {
-              console.error('Error:', error);
-              Alert.alert(
-                '❌ Error',
-                error.response?.data?.error || 'No se pudieron subir las rutinas'
-              );
+              console.error('❌ Error completo:', error);
+              console.error('❌ Error response:', error.response?.data);
+              
+              let errorMessage = 'No se pudieron subir las rutinas';
+              
+              if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+                errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en 192.168.0.83:3000';
+              } else if (error.response?.status === 500) {
+                errorMessage = `Error del servidor: ${error.response?.data?.error || 'Error interno del servidor'}`;
+              } else if (error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+              }
+              
+              Alert.alert('❌ Error', errorMessage);
             } finally {
               setUploadingCalendar(false);
             }
@@ -196,19 +301,44 @@ export default function GroupDetailScreen({ route, navigation }) {
   const subirPorGrupo = async () => {
     setUploadingCalendar(true);
     try {
-      // Usar el routineId del grupo para subir
-      const response = await calendarAPI.subirRutina(group.routineId);
+      console.log('🚀 Enviando grupo completo al servidor...');
+      
+      // Preparar datos completos del grupo para el servidor
+      const groupData = {
+        nombre: group.nombre,
+        descripcion: group.descripcion,
+        tipo: group.tipo,
+        nivel: group.nivel,
+        duracionEstimada: group.duracionEstimada,
+        diasSemana: group.diasSemana,
+        ejercicios: group.ejercicios,
+        clientes: group.clientes,
+        cantidad: group.cantidad
+      };
+      
+      console.log('📤 Datos del grupo a enviar:', groupData);
+      
+      const response = await axiosInstance.post('/calendar/subir-grupo-completo', groupData);
       
       Alert.alert(
         '✅ Éxito',
         `${response.data.data.eventosCreados} eventos creados en Google Calendar`
       );
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert(
-        '❌ Error',
-        error.response?.data?.error || 'No se pudo subir la rutina'
-      );
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error response:', error.response?.data);
+      
+      let errorMessage = 'No se pudo subir la rutina';
+      
+      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en 192.168.0.83:3000';
+      } else if (error.response?.status === 500) {
+        errorMessage = `Error del servidor: ${error.response?.data?.error || 'Error interno del servidor'}`;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      Alert.alert('❌ Error', errorMessage);
     } finally {
       setUploadingCalendar(false);
     }
@@ -267,8 +397,8 @@ export default function GroupDetailScreen({ route, navigation }) {
 
           
           {group.clientes?.length > 0 ? (
-            group.clientes.map((cliente) => (
-              <View key={cliente._id} style={styles.clientCard}>
+            group.clientes.map((cliente, index) => (
+              <View key={cliente.id || cliente._id || cliente.clienteId || `client-${index}`} style={styles.clientCard}>
                 <View style={styles.clientAvatar}>
                   <Text style={styles.clientAvatarText}>
                     {cliente.nombre?.charAt(0)}{cliente.apellido?.charAt(0)}
@@ -321,7 +451,7 @@ export default function GroupDetailScreen({ route, navigation }) {
           </Text>
 
           {group.ejercicios?.sort((a, b) => a.orden - b.orden).map((ejercicio, index) => (
-            <View key={index} style={styles.exerciseCard}>
+            <View key={ejercicio.id || ejercicio._id || `ejercicio-${index}`} style={styles.exerciseCard}>
               <View style={styles.exerciseNumber}>
                 <Text style={styles.exerciseNumberText}>{index + 1}</Text>
               </View>
@@ -363,11 +493,11 @@ export default function GroupDetailScreen({ route, navigation }) {
 
             <FlatList
               data={availableClients}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => item.id || item._id}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.modalClientItem}
-                  onPress={() => addClientToGroup(item._id)}
+                  onPress={() => addClientToGroup(item.id || item._id)}
                 >
                   <Text style={styles.modalClientName}>
                     {item.nombre} {item.apellido}
