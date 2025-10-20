@@ -10,9 +10,11 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { routinesAPI } from '../../api/axios';
+import { useDatabase } from '../../context/DatabaseContext';
 
 export default function CreateTemplateScreen({ navigation }) {
+  const { routines } = useDatabase();
+  
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -102,19 +104,27 @@ export default function CreateTemplateScreen({ navigation }) {
 
     setLoading(true);
     try {
-      // Guardar como plantilla del backend
-      await routinesAPI.createTemplate({
+      console.log('🔄 Creando plantilla:', {
+        nombre: formData.nombre,
+        diasSemana: formData.diasSemana,
+        ejercicios: ejercicios.length,
+        duracionEstimada: parseInt(formData.duracionEstimada)
+      });
+
+      // Guardar como plantilla (rutina sin cliente)
+      const result = await routines.create(null, {
         ...formData,
         duracionEstimada: parseInt(formData.duracionEstimada),
         ejercicios,
       });
 
+      console.log('✅ Plantilla creada exitosamente:', result);
       Alert.alert('Éxito', '✅ Plantilla creada', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'No se pudo crear la plantilla');
+      console.error('❌ Error completo:', error);
+      Alert.alert('Error', `No se pudo crear la plantilla: ${error.message}`);
     } finally {
       setLoading(false);
     }

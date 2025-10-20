@@ -10,10 +10,14 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import { routinesAPI, calendarAPI } from '../../api/axios';
+import { useDatabase } from '../../context/DatabaseContext';
+import googleCalendarService from '../../services/googleCalendarService';
+import * as SecureStore from 'expo-secure-store';
 
 export default function RoutineDetailScreen({ route, navigation }) {
   const { routineId } = route.params;
+  const { routines } = useDatabase();
+  
   const [routine, setRoutine] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploadingCalendar, setUploadingCalendar] = useState(false);
@@ -26,8 +30,8 @@ export default function RoutineDetailScreen({ route, navigation }) {
 
   const loadRoutine = async () => {
     try {
-      const { data } = await routinesAPI.getById(routineId);
-      setRoutine(data.data);
+      const routineData = await routines.getById(routineId);
+      setRoutine(routineData);
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'No se pudo cargar la rutina');
@@ -38,35 +42,112 @@ export default function RoutineDetailScreen({ route, navigation }) {
   };
 
   const subirACalendar = async () => {
-    Alert.alert(
-      'Subir a Google Calendar',
-      `¿Subir la rutina "${routine.nombre}" a Google Calendar?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Subir',
-          onPress: async () => {
-            setUploadingCalendar(true);
-            try {
-              const response = await calendarAPI.subirRutina(routineId);
-              
-              Alert.alert(
-                '✅ Éxito',
-                `${response.data.data.eventosCreados} eventos creados en Google Calendar`
-              );
-            } catch (error) {
-              console.error('Error:', error);
-              Alert.alert(
-                '❌ Error',
-                error.response?.data?.error || 'No se pudo subir la rutina'
-              );
-            } finally {
-              setUploadingCalendar(false);
+    try {
+      console.log('🔄 Iniciando proceso para Google Calendar...');
+      
+      // Verificar autenticación
+      const isAuthenticated = googleCalendarService.isAuthenticated();
+      
+      if (!isAuthenticated) {
+        // Intentar recuperar tokens guardados
+        const initialized = await googleCalendarService.initialize();
+        
+        if (!initialized) {
+          Alert.alert(
+            '🔐 Autenticación requerida',
+            'Necesitas autenticarte con Google para usar Google Calendar',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Autenticar',
+                onPress: async () => {
+                  try {
+                    const success = await googleCalendarService.authenticate();
+                    if (success) {
+                      Alert.alert(
+                        '✅ Autenticación exitosa',
+                        '¡Ahora puedes subir rutinas a Google Calendar!',
+                        [
+                          {
+                            text: 'Subir rutina',
+                            onPress: () => subirACalendar()
+                          },
+                          { text: 'OK', style: 'default' }
+                        ]
+                      );
+                    } else {
+                      Alert.alert('Error', 'No se pudo completar la autenticación');
+                    }
+                  } catch (error) {
+                    Alert.alert('Error', `Error en autenticación: ${error.message}`);
+                  }
+                }
+              }
+            ]
+          );
+          return;
+        }
+      }
+
+      // Validar datos de la rutina
+      if (!routine.diasSemana || routine.diasSemana.length === 0) {
+        Alert.alert(
+          'Error',
+          'La rutina debe tener al menos un día asignado para poder subirla a Google Calendar'
+        );
+        return;
+      }
+
+      if (!routine.clienteNombre) {
+        Alert.alert('Error', 'Falta información del cliente');
+        return;
+      }
+
+      // Confirmar subida
+      Alert.alert(
+        'Subir a Google Calendar',
+        `¿Subir la rutina "${routine.nombre}" a Google Calendar?\n\nSe crearán eventos para: ${routine.diasSemana.join(', ')}`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Subir',
+            onPress: async () => {
+              setUploadingCalendar(true);
+              try {
+                console.log('📤 Subiendo rutina a Google Calendar...');
+                
+                const resultado = await googleCalendarService.createRoutineEvents(routine);
+                
+                Alert.alert(
+                  '✅ Éxito',
+                  `${resultado.eventosCreados} eventos creados en Google Calendar para los días: ${routine.diasSemana.join(', ')}`
+                );
+                
+              } catch (error) {
+                console.error('❌ Error:', error);
+                
+                let errorMessage = 'No se pudo subir la rutina a Google Calendar';
+                
+                if (error.message.includes('Token expirado')) {
+                  errorMessage = 'Tu sesión de Google ha expirado. Por favor, vuelve a autenticarte.';
+                } else if (error.message.includes('No hay token')) {
+                  errorMessage = 'Debes autenticarte con Google primero.';
+                } else {
+                  errorMessage = error.message;
+                }
+                
+                Alert.alert('Error', errorMessage);
+              } finally {
+                setUploadingCalendar(false);
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error general:', error);
+      Alert.alert('Error', `Error inesperado: ${error.message}`);
+    }
   };
 
   const shareRoutine = () => {
@@ -82,9 +163,38 @@ export default function RoutineDetailScreen({ route, navigation }) {
       message += `${index + 1}. ${ej.nombre} - ${ej.series}x${ej.repeticiones}\n`;
     });
 
-    const phone = routine.cliente?.telefono?.replace(/[^0-9]/g, '');
+    let phone = routine.cliente?.telefono;
     if (phone) {
-      Linking.openURL(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`);
+      // Limpiar el teléfono de caracteres no numéricos excepto +
+      phone = phone.replace(/[^0-9+]/g, '');
+      
+      // Si ya empieza con +54, usar tal como está (no agregar nada más)
+      if (phone.startsWith('+54')) {
+        // Ya tiene el formato correcto
+      } else if (phone.startsWith('54')) {
+        phone = '+' + phone;
+      } else {
+        // Si no tiene código de país, agregar +54
+        phone = '+54' + phone;
+      }
+      
+      // Para WhatsApp, remover el + pero mantener el código de país
+      const whatsappNumber = phone.replace('+', '');
+      
+      // Mostrar confirmación con el número antes de enviar
+      Alert.alert(
+        'Confirmar envío por WhatsApp',
+        `¿Enviar rutina a:\n\n📱 ${phone}\n\nCliente: ${routine.cliente?.nombre} ${routine.cliente?.apellido}`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Enviar',
+            onPress: () => {
+              Linking.openURL(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`);
+            }
+          }
+        ]
+      );
     } else {
       Alert.alert('Error', 'El cliente no tiene teléfono registrado');
     }

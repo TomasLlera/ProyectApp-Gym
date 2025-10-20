@@ -11,9 +11,11 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { routinesAPI, clientsAPI } from '../../api/axios';
+import { useDatabase } from '../../context/DatabaseContext';
 
 export default function CreateRoutineScreen({ navigation }) {
+  const { clients, routines } = useDatabase();
+
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -26,7 +28,7 @@ export default function CreateRoutineScreen({ navigation }) {
   const [ejercicios, setEjercicios] = useState([]);
   const [showClientModal, setShowClientModal] = useState(false);
   const [showExerciseModal, setShowExerciseModal] = useState(false);
-  const [clients, setClients] = useState([]);
+  const [clientsList, setClientsList] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]); // 🔥 CAMBIADO a array
   const [groups, setGroups] = useState([]);
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -48,13 +50,13 @@ export default function CreateRoutineScreen({ navigation }) {
 
   const loadClients = async () => {
     try {
-      const clientsRes = await clientsAPI.getAll({ limit: 100 });
-      setClients(clientsRes.data.data.clients);
+      const clientsData = await clients.getAll();
+      setClientsList(clientsData);
       
-      // Intentar cargar grupos
+      // Cargar grupos de rutinas
       try {
-        const groupsRes = await groupsAPI.getAll();
-        setGroups(groupsRes.data.data.groups || []);
+        const groupsData = await routines.getGrouped();
+        setGroups(groupsData);
       } catch (groupError) {
         console.log('No hay grupos disponibles');
         setGroups([]);
@@ -73,7 +75,7 @@ export default function CreateRoutineScreen({ navigation }) {
   };
 
   const selectGroup = (group) => {
-    setSelectedClients(group.clientes.map(c => c._id));
+    setSelectedClients(group.clientes.map(c => c.id));
     setShowGroupModal(false);
   };
 
@@ -150,21 +152,31 @@ export default function CreateRoutineScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await routinesAPI.create({
-        clienteIds: selectedClients, // 🔥 ARRAY de clientes
-        ...formData,
-        duracionEstimada: parseInt(formData.duracionEstimada),
-        ejercicios,
+      console.log('🔄 Creando rutinas para grupo:', {
+        nombre: formData.nombre,
+        clientes: selectedClients.length,
+        diasSemana: formData.diasSemana,
+        ejercicios: ejercicios.length
       });
+
+      // Crear rutina para cada cliente seleccionado
+      for (const clienteId of selectedClients) {
+        const result = await routines.create(clienteId, {
+          ...formData,
+          duracionEstimada: parseInt(formData.duracionEstimada),
+          ejercicios,
+        });
+        console.log(`✅ Rutina creada para cliente ${clienteId}:`, result.id);
+      }
 
       Alert.alert(
         'Éxito', 
-        `Rutina creada para ${selectedClients.length} cliente(s)`, 
+        `✅ Rutina creada para ${selectedClients.length} cliente(s)`, 
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'No se pudo crear la rutina');
+      console.error('❌ Error completo creando rutina:', error);
+      Alert.alert('Error', `No se pudo crear la rutina: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -361,14 +373,14 @@ export default function CreateRoutineScreen({ navigation }) {
             )}
 
             <FlatList
-              data={clients}
-              keyExtractor={(item) => item._id}
+              data={clientsList}
+              keyExtractor={(item) => item.id || item._id}
               renderItem={({ item }) => {
-                const isSelected = selectedClients.includes(item._id);
+                const isSelected = selectedClients.includes(item.id || item._id);
                 return (
                   <TouchableOpacity
                     style={[styles.clientItem, isSelected && styles.clientItemSelected]}
-                    onPress={() => toggleClient(item._id)}
+                    onPress={() => toggleClient(item.id || item._id)}
                   >
                     <View style={styles.checkbox}>
                       {isSelected && <Text style={styles.checkmark}>✓</Text>}
@@ -416,7 +428,7 @@ export default function CreateRoutineScreen({ navigation }) {
 
             <FlatList
               data={groups}
-              keyExtractor={(item) => item._id}
+              keyExtractor={(item) => item._id || item.id}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.groupItem}
@@ -424,7 +436,7 @@ export default function CreateRoutineScreen({ navigation }) {
                 >
                   <Text style={styles.groupName}>{item.nombre}</Text>
                   <Text style={styles.groupCount}>
-                    {item.clientes?.length || 0} cliente(s)
+                    {item.cantidad || item.clientes?.length || 0} cliente(s)
                   </Text>
                 </TouchableOpacity>
               )}

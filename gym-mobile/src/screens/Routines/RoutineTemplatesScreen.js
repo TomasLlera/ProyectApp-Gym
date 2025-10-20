@@ -10,14 +10,16 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
-import { routinesAPI, clientsAPI, groupsAPI } from '../../api/axios';
+import { useDatabase } from '../../context/DatabaseContext';
 
 export default function RoutineTemplatesScreen({ navigation }) {
+  const { routines, clients } = useDatabase();
+  
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showClientModal, setShowClientModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [clients, setClients] = useState([]);
+  const [clientsList, setClientsList] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
   const [groups, setGroups] = useState([]);
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -28,9 +30,26 @@ export default function RoutineTemplatesScreen({ navigation }) {
 
   const loadTemplates = async () => {
     try {
-      const { data } = await routinesAPI.getTemplates();
-      setTemplates(data.data);
+      // Obtener todas las rutinas y filtrar las que son plantillas (sin cliente)
+      const allRoutines = await routines.getAll();
+      const templatesList = allRoutines.filter(routine => !routine.clienteId);
+      
+      // Cargar ejercicios para cada plantilla
+      const templatesWithExercises = await Promise.all(
+        templatesList.map(async (template) => {
+          try {
+            const fullTemplate = await routines.getById(template.id);
+            return fullTemplate;
+          } catch (error) {
+            console.warn(`Error cargando ejercicios para plantilla ${template.id}:`, error);
+            return template; // Devolver plantilla sin ejercicios si hay error
+          }
+        })
+      );
+      
+      setTemplates(templatesWithExercises);
     } catch (error) {
+      console.error('Error loading templates:', error);
       Alert.alert('Error', 'No se pudieron cargar las plantillas');
     } finally {
       setLoading(false);
@@ -42,13 +61,13 @@ export default function RoutineTemplatesScreen({ navigation }) {
     setSelectedClients([]);
     try {
       // Cargar clientes
-      const clientsRes = await clientsAPI.getAll({ limit: 100 });
-      setClients(clientsRes.data.data.clients);
+      const clientsData = await clients.getAll();
+      setClientsList(clientsData);
       
-      // Intentar cargar grupos (si falla, continuar sin grupos)
+      // Cargar grupos
       try {
-        const groupsRes = await groupsAPI.getAll();
-        setGroups(groupsRes.data.data.groups || []);
+        const groupsData = await routines.getGrouped();
+        setGroups(groupsData);
       } catch (groupError) {
         console.log('No se pudieron cargar grupos (opcional):', groupError);
         setGroups([]);
@@ -70,7 +89,7 @@ export default function RoutineTemplatesScreen({ navigation }) {
   };
 
   const selectGroup = (group) => {
-    setSelectedClients(group.clientes.map(c => c._id));
+    setSelectedClients(group.clientes.map(c => c.id || c._id));
     setShowGroupModal(false);
   };
 
@@ -82,7 +101,6 @@ export default function RoutineTemplatesScreen({ navigation }) {
 
     try {
       const routineData = {
-        clienteIds: selectedClients,
         nombre: selectedTemplate.nombre,
         descripcion: selectedTemplate.descripcion || '',
         tipo: selectedTemplate.tipo,
@@ -102,9 +120,10 @@ export default function RoutineTemplatesScreen({ navigation }) {
         }))
       };
 
-      console.log('📤 Enviando rutina a múltiples clientes:', routineData);
-      
-      await routinesAPI.create(routineData);
+      // Crear rutina para cada cliente seleccionado
+      for (const clienteId of selectedClients) {
+        await routines.create(clienteId, routineData);
+      }
       
       Alert.alert(
         'Éxito', 
@@ -116,7 +135,7 @@ export default function RoutineTemplatesScreen({ navigation }) {
       );
     } catch (error) {
       console.error('❌ Error:', error);
-      Alert.alert('Error', error.response?.data?.error || 'No se pudo crear la rutina');
+      Alert.alert('Error', 'No se pudo crear la rutina');
     }
   };
 
@@ -204,14 +223,14 @@ export default function RoutineTemplatesScreen({ navigation }) {
             )}
 
             <FlatList
-              data={clients}
-              keyExtractor={(item) => item._id}
+              data={clientsList}
+              keyExtractor={(item) => item.id || item._id}
               renderItem={({ item }) => {
-                const isSelected = selectedClients.includes(item._id);
+                const isSelected = selectedClients.includes(item.id || item._id);
                 return (
                   <TouchableOpacity
                     style={[styles.clientItem, isSelected && styles.clientItemSelected]}
-                    onPress={() => toggleClient(item._id)}
+                    onPress={() => toggleClient(item.id || item._id)}
                   >
                     <View style={styles.checkbox}>
                       {isSelected && <Text style={styles.checkmark}>✓</Text>}
