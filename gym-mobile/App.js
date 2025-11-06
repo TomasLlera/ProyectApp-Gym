@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Text } from 'react-native';
+import { View, ActivityIndicator, Text, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SplashScreen from 'expo-splash-screen';
+import * as NavigationBar from 'expo-navigation-bar';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DatabaseProvider } from './src/context/DatabaseContext';
 import { AppConfigProvider } from './src/context/AppConfigContext';
@@ -11,16 +13,40 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { initDatabase } from './src/database/db';
 import { syncFromMongoDB, shouldSync } from './src/database/syncService';
 
+// Prevenir que se oculte automáticamente
+SplashScreen.preventAutoHideAsync();
+
 function RootApp() {
   const { user, loading: authLoading } = useAuth();
-  const [dbReady, setDbReady] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [appIsReady, setAppIsReady] = useState(false);
   const [syncError, setSyncError] = useState(null);
 
   useEffect(() => {
-    const initializeApp = async () => {
+    async function prepare() {
       try {
         console.log('🚀 Inicializando aplicación...');
+        
+        // Configurar navegación inmersiva en Android
+        if (Platform.OS === 'android') {
+          try {
+            // Ocultar barra de navegación
+            await NavigationBar.setVisibilityAsync("hidden");
+            
+            // Establecer comportamiento inmersivo
+            await NavigationBar.setBehaviorAsync("inset-swipe");
+            
+            // Color transparente
+            await NavigationBar.setBackgroundColorAsync("#00000000");
+            
+            // Botones claros
+            await NavigationBar.setButtonStyleAsync("light");
+            
+            console.log('✅ Navegación inmersiva configurada');
+          } catch (error) {
+            console.log('⚠️ Error configurando barra de navegación:', error);
+          }
+        }
+        
         await initDatabase();
         console.log('✅ Base de datos SQLite inicializada');
 
@@ -28,23 +54,30 @@ function RootApp() {
           await performSync();
         }
 
-        setDbReady(true);
+        // Mantener splash 2 segundos mínimo
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (error) {
         console.error('❌ Error inicializando app:', error);
         setSyncError(error.message);
-        setDbReady(true);
+      } finally {
+        setAppIsReady(true);
       }
-    };
+    }
 
-    initializeApp();
+    prepare();
   }, [user]);
+
+  useEffect(() => {
+    if (appIsReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
 
   const performSync = async () => {
     try {
       const needsSync = await shouldSync();
       
       if (needsSync) {
-        setSyncing(true);
         const token = await AsyncStorage.getItem('token');
         
         if (token) {
@@ -57,40 +90,20 @@ function RootApp() {
     } catch (error) {
       console.error('❌ Error en sincronización:', error);
       setSyncError(error.message);
-    } finally {
-      setSyncing(false);
     }
   };
-
-  if (syncing) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#4F46E5' }}>
-        <ActivityIndicator size="large" color="#fff" />
-        <Text style={{ color: '#fff', marginTop: 16, fontSize: 16 }}>
-          Sincronizando datos...
-        </Text>
-      </View>
-    );
-  }
 
   if (syncError) {
     console.warn('Advertencia de sincronización:', syncError);
   }
 
-  if (!dbReady || authLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#4F46E5' }}>
-        <ActivityIndicator size="large" color="#fff" />
-        <Text style={{ color: '#fff', marginTop: 16, fontSize: 16 }}>
-          Cargando aplicación...
-        </Text>
-      </View>
-    );
+  if (!appIsReady) {
+    return null;
   }
 
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <AppNavigator />
     </>
   );

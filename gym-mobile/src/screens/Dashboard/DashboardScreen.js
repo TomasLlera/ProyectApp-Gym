@@ -11,7 +11,9 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useDatabase } from '../../context/DatabaseContext';
+import { theme } from '../../constants/theme';
 
 export default function DashboardScreen({ navigation }) {
   const { clients, payments } = useDatabase();
@@ -30,32 +32,127 @@ export default function DashboardScreen({ navigation }) {
 
   const loadData = async () => {
     try {
-      // Obtener estadísticas desde SQLite
+      // ========================================
+      // VALIDACIÓN 1: Verificar que clients esté disponible
+      // ========================================
+      if (!clients || !clients.getAll) {
+        throw new Error('Servicio de clientes no disponible');
+      }
+
       const allClients = await clients.getAll();
       
-      const clientesPagados = allClients.filter(c => c.estadoPago === 'pagado').length;
-      const clientesVencidos = allClients.filter(c => c.estadoPago === 'vencido').length;
-      const clientesPendientes = allClients.filter(c => c.estadoPago === 'pendiente').length;
-      const ingresosMes = allClients
-        .filter(c => c.estadoPago === 'pagado')
-        .reduce((sum, c) => sum + (c.montoMensual || 0), 0);
+      // ========================================
+      // VALIDACIÓN 2: Verificar que sea un array válido
+      // ========================================
+      if (!Array.isArray(allClients)) {
+        throw new Error('Datos de clientes inválidos');
+        return;
+      }
 
-      // Obtener clientes que pagaron (en lugar de vencidos)
-      const clientesPagadosRecientes = allClients.filter(c => c.estadoPago === 'pagado');
+      console.log(`📊 Cargando estadísticas para ${allClients.length} clientes`);
+
+      // ========================================
+      // VALIDACIÓN 3: Filtrar clientes con datos incompletos o inválidos
+      // ========================================
+      const validClients = allClients.filter(c => {
+        // Verificar campos obligatorios
+        if (!c.nombre || !c.apellido) {
+          console.warn(`⚠️ Cliente sin nombre completo:`, c.id);
+          return false;
+        }
+        
+        // Verificar que montoMensual sea un número válido
+        if (c.montoMensual === null || c.montoMensual === undefined || isNaN(c.montoMensual)) {
+          console.warn(`⚠️ Cliente ${c.nombre} sin monto válido`);
+          return false;
+        }
+
+        return true;
+      });
+
+      console.log(`✅ ${validClients.length} clientes válidos de ${allClients.length} totales`);
+
+      // ========================================
+      // VALIDACIÓN 4: Verificar y corregir estadoPago inválido
+      // ========================================
+      const validStates = ['pagado', 'vencido', 'pendiente'];
+      validClients.forEach(c => {
+        if (!validStates.includes(c.estadoPago)) {
+          console.warn(`⚠️ Cliente ${c.nombre} con estado inválido: ${c.estadoPago}`);
+          c.estadoPago = 'pendiente'; // Valor por defecto
+        }
+      });
+
+      // ========================================
+      // CALCULAR ESTADÍSTICAS CON DATOS VALIDADOS
+      // ========================================
+      const clientesPagados = validClients.filter(c => c.estadoPago === 'pagado').length;
+      const clientesVencidos = validClients.filter(c => c.estadoPago === 'vencido').length;
+      const clientesPendientes = validClients.filter(c => c.estadoPago === 'pendiente').length;
+
+      // Calcular ingresos solo de clientes pagados con monto válido
+      const ingresosMes = validClients
+        .filter(c => c.estadoPago === 'pagado')
+        .reduce((sum, c) => {
+          const monto = parseFloat(c.montoMensual) || 0;
+          return sum + monto;
+        }, 0);
+
+      // ========================================
+      // VALIDACIÓN 5: Verificar que los números sean válidos
+      // ========================================
+      if (isNaN(ingresosMes)) {
+        console.error('❌ Error calculando ingresos');
+        throw new Error('Error en cálculo de ingresos');
+      }
 
       setStats({
-        totalClientes: allClients.length,
+        totalClientes: validClients.length,
         clientesPagados,
         clientesVencidos,
         clientesPendientes,
-        ingresosMes
+        ingresosMes: Math.round(ingresosMes) // Redondear para evitar decimales extraños
       });
-      
-      // Cambiar a clientes pagados en lugar de vencidos
+
+      // ========================================
+      // OBTENER CLIENTES PAGADOS PARA LA LISTA
+      // ========================================
+      const clientesPagadosRecientes = validClients
+        .filter(c => c.estadoPago === 'pagado')
+        .sort((a, b) => {
+          // Ordenar por fecha de actualización (más reciente primero)
+          const dateA = new Date(a.updatedAt || a.fechaUltimoPago || 0);
+          const dateB = new Date(b.updatedAt || b.fechaUltimoPago || 0);
+          return dateB - dateA;
+        })
+        .slice(0, 10); // Solo los últimos 10
+
       setPaidClients(clientesPagadosRecientes);
+
+      console.log('✅ Dashboard cargado exitosamente');
+
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
+      console.error('❌ Error cargando datos del dashboard:', error);
+      
+      // Mostrar error al usuario
+      Alert.alert(
+        'Error',
+        'No se pudieron cargar los datos del dashboard. Por favor, intenta nuevamente.',
+        [
+          { text: 'Reintentar', onPress: () => loadData() },
+          { text: 'Cancelar', style: 'cancel' }
+        ]
+      );
+
+      // Establecer valores por defecto para evitar crashes
+      setStats({
+        totalClientes: 0,
+        clientesPagados: 0,
+        clientesVencidos: 0,
+        clientesPendientes: 0,
+        ingresosMes: 0
+      });
+      setPaidClients([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -117,12 +214,16 @@ export default function DashboardScreen({ navigation }) {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+    <LinearGradient
+      colors={['#1A1A1A', '#2A2A2A', '#1A1A1A']}
+      style={styles.gradientContainer}
     >
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       {/* Ingresos Card - Movido al principio */}
       <TouchableOpacity 
         style={styles.revenueCardTop}
@@ -261,7 +362,8 @@ export default function DashboardScreen({ navigation }) {
           )}
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
@@ -285,9 +387,11 @@ function StatCard({ title, value, icon, color, onPress }) {
 }
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
 
   // ⏳ Loading
@@ -295,11 +399,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: theme.colors.text.secondary,
     fontWeight: '500',
   },
 
@@ -317,7 +421,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1.3,
     borderRadius: 12,
     padding: 8,
-    shadowColor: '#000',
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.2,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -368,7 +472,7 @@ const styles = StyleSheet.create({
 
   // 💰 Tarjeta de ingresos (en la parte superior)
   revenueCardTop: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: theme.colors.primary, // Naranja O2
     marginHorizontal: 20,
     marginTop: 16,
     marginBottom: 12,
@@ -376,7 +480,7 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.4,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -439,13 +543,13 @@ const styles = StyleSheet.create({
 
   // 🔔 Botón de recordatorios
   reminderButton: {
-    backgroundColor: '#F97316',
+    backgroundColor: theme.colors.primary,
     marginHorizontal: 20,
     marginVertical: 12,
     paddingVertical: 12,
     borderRadius: 20,
     alignItems: 'center',
-    shadowColor: '#F97316',
+    shadowColor: theme.colors.primary,
     shadowOpacity: 0.4,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 3 },
@@ -489,26 +593,26 @@ const styles = StyleSheet.create({
   },
 
   // 📋 Sección de vencidos
-  section: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 30,
-    borderRadius: 24,
-    padding: 20,
+  section: { 
+    backgroundColor: '#fff', 
+    margin: 16, 
+    marginTop: 0, 
+    padding: 16, 
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     borderWidth: 2,
-    borderColor: '#F1F5F9',
+    borderColor: '#FFE5DC',  // Borde naranja suave
   },
   sectionHeader: {
     flexDirection: 'column',
     marginBottom: 20,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomWidth: 2,
+    borderBottomColor: '#FF6B35',  // Naranja O2
   },
   sectionTitleContainer: {
     flexDirection: 'row',
@@ -519,19 +623,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#1A1A1A',  // Negro O2
     marginRight: 12,
     textAlign: 'center',
   },
   clientCountBadge: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 2,
-    borderColor: '#BBF7D0',
-    shadowColor: '#16A34A',
-    shadowOpacity: 0.1,
+    borderColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
@@ -539,20 +643,20 @@ const styles = StyleSheet.create({
   clientCountText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#16A34A',
+    color: '#E55A2B',  // Naranja oscuro
   },
   seeAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#FF6B35',  // Naranja O2
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#C7D2FE',
-    shadowColor: '#4F46E5',
-    shadowOpacity: 0.2,
+    borderColor: '#E55A2B',  // Naranja oscuro
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 6,
@@ -560,13 +664,13 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1 }],
   },
   seeAllText: {
-    color: '#4F46E5',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
     marginRight: 6,
   },
   seeAllArrow: {
-    color: '#4F46E5',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
     transition: 'transform 0.3s ease',
@@ -575,38 +679,38 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   viewAllClientsButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
     marginTop: 12,
     paddingVertical: 14,
     borderRadius: 18,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderStyle: 'dashed',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
+    borderColor: '#FF6B35',  // Naranja O2
+    borderStyle: 'solid',
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
     transform: [{ scale: 1 }],
   },
   viewAllClientsText: {
-    color: '#6B7280',
+    color: '#E55A2B',  // Naranja oscuro
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   // 👤 Tarjetas de clientes
   clientCard: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FFF5F2',  // Fondo naranja muy suave
     padding: 14,
     borderRadius: 20,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#BBF7D0',
+    borderColor: '#FFD4C4',  // Borde naranja claro
     borderLeftWidth: 5,
-    borderLeftColor: '#16A34A',
-    shadowColor: '#16A34A',
+    borderLeftColor: '#FF6B35',  // Borde izquierdo naranja O2
+    shadowColor: '#FF6B35',
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -630,7 +734,7 @@ const styles = StyleSheet.create({
   clientName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.colors.text.primary,
     flex: 1,
     marginRight: 12,
   },
@@ -641,23 +745,23 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: theme.colors.text.secondary,
     fontWeight: '500',
     flex: 1,
   },
   paidText: {
     fontSize: 11,
-    color: '#16A34A',
+    color: '#E55A2B',  // Naranja oscuro
     fontWeight: '700',
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#FFE5DC',  // Fondo naranja claro
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
     textAlign: 'center',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
-    shadowColor: '#16A34A',
-    shadowOpacity: 0.1,
+    borderColor: '#FF6B35',  // Borde naranja O2
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
   },

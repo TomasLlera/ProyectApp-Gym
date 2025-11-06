@@ -13,6 +13,33 @@ import {
 import { useDatabase } from '../../context/DatabaseContext';
 import googleCalendarService from '../../services/googleCalendarService';
 import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
+
+// Importar la instancia configurada de axios
+const axiosInstance = axios.create({
+  baseURL: 'http://192.168.0.83:3000/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+// Interceptor para agregar token automáticamente
+axiosInstance.interceptors.request.use(
+  async (config) => {
+    const token = await SecureStore.getItemAsync('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔐 Token agregado a la petición de rutina');
+    } else {
+      console.log('❌ No hay token disponible para rutina');
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default function RoutineDetailScreen({ route, navigation }) {
   const { routineId } = route.params;
@@ -45,50 +72,6 @@ export default function RoutineDetailScreen({ route, navigation }) {
     try {
       console.log('🔄 Iniciando proceso para Google Calendar...');
       
-      // Verificar autenticación
-      const isAuthenticated = googleCalendarService.isAuthenticated();
-      
-      if (!isAuthenticated) {
-        // Intentar recuperar tokens guardados
-        const initialized = await googleCalendarService.initialize();
-        
-        if (!initialized) {
-          Alert.alert(
-            '🔐 Autenticación requerida',
-            'Necesitas autenticarte con Google para usar Google Calendar',
-            [
-              { text: 'Cancelar', style: 'cancel' },
-              {
-                text: 'Autenticar',
-                onPress: async () => {
-                  try {
-                    const success = await googleCalendarService.authenticate();
-                    if (success) {
-                      Alert.alert(
-                        '✅ Autenticación exitosa',
-                        '¡Ahora puedes subir rutinas a Google Calendar!',
-                        [
-                          {
-                            text: 'Subir rutina',
-                            onPress: () => subirACalendar()
-                          },
-                          { text: 'OK', style: 'default' }
-                        ]
-                      );
-                    } else {
-                      Alert.alert('Error', 'No se pudo completar la autenticación');
-                    }
-                  } catch (error) {
-                    Alert.alert('Error', `Error en autenticación: ${error.message}`);
-                  }
-                }
-              }
-            ]
-          );
-          return;
-        }
-      }
-
       // Validar datos de la rutina
       if (!routine.diasSemana || routine.diasSemana.length === 0) {
         Alert.alert(
@@ -98,7 +81,7 @@ export default function RoutineDetailScreen({ route, navigation }) {
         return;
       }
 
-      if (!routine.clienteNombre) {
+      if (!routine.cliente) {
         Alert.alert('Error', 'Falta información del cliente');
         return;
       }
@@ -116,24 +99,53 @@ export default function RoutineDetailScreen({ route, navigation }) {
               try {
                 console.log('📤 Subiendo rutina a Google Calendar...');
                 
-                const resultado = await googleCalendarService.createRoutineEvents(routine);
+                const response = await axiosInstance.post('/calendar/subir-rutina-completa', {
+                  nombre: routine.nombre,
+                  descripcion: routine.descripcion,
+                  tipo: routine.tipo,
+                  nivel: routine.nivel,
+                  duracionEstimada: routine.duracionEstimada,
+                  diasSemana: routine.diasSemana,
+                  ejercicios: routine.ejercicios,
+                  cliente: {
+                    nombre: routine.cliente.nombre,
+                    apellido: routine.cliente.apellido,
+                    email: routine.cliente.email,     // ⬅️ IMPORTANTE
+                    telefono: routine.cliente.telefono
+                  }
+                });
                 
-                Alert.alert(
-                  '✅ Éxito',
-                  `${resultado.eventosCreados} eventos creados en Google Calendar para los días: ${routine.diasSemana.join(', ')}`
-                );
+                console.log('📬 Notificaciones enviadas:', response.data.notificaciones);
+                // { email: 'Enviado', whatsapp: 'Enviado' }
+                
+                let successMessage = response.data.message;
+                
+                // Agregar información de notificaciones si está disponible
+                if (response.data.notificaciones) {
+                  const notifs = response.data.notificaciones;
+                  successMessage += '\n\n📬 Notificaciones:';
+                  if (notifs.email) {
+                    successMessage += `\n📧 Email: ${notifs.email}`;
+                  }
+                  if (notifs.whatsapp) {
+                    successMessage += `\n💬 WhatsApp: ${notifs.whatsapp}`;
+                  }
+                }
+                
+                Alert.alert('✅ Éxito', successMessage);
                 
               } catch (error) {
                 console.error('❌ Error:', error);
+                console.error('❌ Error response:', error.response?.data);
                 
                 let errorMessage = 'No se pudo subir la rutina a Google Calendar';
                 
-                if (error.message.includes('Token expirado')) {
-                  errorMessage = 'Tu sesión de Google ha expirado. Por favor, vuelve a autenticarte.';
-                } else if (error.message.includes('No hay token')) {
-                  errorMessage = 'Debes autenticarte con Google primero.';
-                } else {
-                  errorMessage = error.message;
+                if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+                  errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en 192.168.0.83:3000';
+                } else if (error.response?.status === 500) {
+                  errorMessage = `Error del servidor: ${error.response?.data?.error || 'Error interno del servidor'}`;
+                } else if (error.response?.data?.error) {
+                  errorMessage = error.response.data.error;
                 }
                 
                 Alert.alert('Error', errorMessage);
@@ -331,7 +343,7 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#6B7280'
+    personalizado: '#FF6B35'  // Naranja O2 para personalizado
   };
   return colors[tipo] || colors.personalizado;
 }
@@ -352,36 +364,188 @@ function getGrupoColor(grupo) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
   loadingText: { fontSize: 16, color: '#6B7280' },
-  header: { backgroundColor: '#fff', padding: 24, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#3B82F6', marginBottom: 16 },
+  header: { 
+    backgroundColor: '#1A1A1A',  // Negro O2
+    padding: 24, 
+    borderBottomWidth: 3, 
+    borderBottomColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#FFFFFF', 
+    marginBottom: 8 
+  },
+  subtitle: { 
+    fontSize: 16, 
+    color: '#FF8456',  // Naranja claro
+    marginBottom: 16 
+  },
   badges: { flexDirection: 'row', gap: 8 },
-  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#6B7280' },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
+  badge: { 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  badgeText: { 
+    color: '#FFFFFF', 
+    fontSize: 12, 
+    fontWeight: 'bold', 
+    textTransform: 'uppercase' 
+  },
   actions: { padding: 16 },
-  actionBtn: { padding: 12, borderRadius: 12, alignItems: 'center' },
-  actionBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  section: { backgroundColor: '#fff', margin: 16, marginTop: 0, padding: 16, borderRadius: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 },
+  actionBtn: { 
+    padding: 12, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+    borderWidth: 2,
+  },
+  actionBtnText: { 
+    color: '#FFFFFF', 
+    fontSize: 14, 
+    fontWeight: 'bold' 
+  },
+  section: { 
+    backgroundColor: '#FFFFFF', 
+    margin: 16, 
+    marginTop: 0, 
+    padding: 16, 
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 16 
+  },
   infoRow: { marginBottom: 16 },
-  infoLabel: { fontSize: 14, color: '#6B7280', marginBottom: 4 },
-  infoValue: { fontSize: 16, color: '#1F2937', fontWeight: '600' },
-  daysContainer: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 8 },
-  dayChip: { backgroundColor: '#3B82F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  dayChipText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  exerciseCard: { flexDirection: 'row', backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12, marginBottom: 12 },
-  exerciseNumber: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  exerciseNumberText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  infoLabel: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginBottom: 4 
+  },
+  infoValue: { 
+    fontSize: 16, 
+    color: '#1A1A1A',  // Negro O2
+    fontWeight: '600' 
+  },
+  daysContainer: { 
+    flexDirection: 'row', 
+    gap: 8, 
+    flexWrap: 'wrap', 
+    marginTop: 8 
+  },
+  dayChip: { 
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FF6B35',
+  },
+  dayChipText: { 
+    color: '#E55A2B',  // Naranja oscuro
+    fontSize: 11, 
+    fontWeight: 'bold' 
+  },
+  exerciseCard: { 
+    flexDirection: 'row', 
+    backgroundColor: '#F9FAFB', 
+    borderRadius: 12, 
+    padding: 12, 
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',  // Naranja O2
+  },
+  exerciseNumber: { 
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  exerciseNumberText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
   exerciseContent: { flex: 1 },
-  exerciseName: { fontSize: 16, fontWeight: 'bold', color: '#1F2937', marginBottom: 4 },
-  exerciseDescription: { fontSize: 13, color: '#6B7280', marginBottom: 8 },
-  exerciseDetails: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  exerciseName: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 4 
+  },
+  exerciseDescription: { 
+    fontSize: 13, 
+    color: '#6B7280', 
+    marginBottom: 8 
+  },
+  exerciseDetails: { 
+    flexDirection: 'row', 
+    gap: 12, 
+    marginBottom: 8 
+  },
   exerciseDetail: { alignItems: 'center' },
-  detailLabel: { fontSize: 10, color: '#6B7280', marginBottom: 2 },
-  detailValue: { fontSize: 14, fontWeight: 'bold', color: '#1F2937' },
-  grupoMuscular: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 8 },
-  grupoMuscularText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
-  exerciseNotes: { fontSize: 12, color: '#6B7280', fontStyle: 'italic' },
+  detailLabel: { 
+    fontSize: 10, 
+    color: '#6B7280', 
+    marginBottom: 2 
+  },
+  detailValue: { 
+    fontSize: 14, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A'  // Negro O2
+  },
+  grupoMuscular: { 
+    alignSelf: 'flex-start', 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 12, 
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  grupoMuscularText: { 
+    color: '#FFFFFF', 
+    fontSize: 11, 
+    fontWeight: 'bold', 
+    textTransform: 'uppercase' 
+  },
+  exerciseNotes: { 
+    fontSize: 12, 
+    color: '#6B7280', 
+    fontStyle: 'italic' 
+  },
 });

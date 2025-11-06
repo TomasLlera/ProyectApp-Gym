@@ -4,10 +4,7 @@ const connectDB = async () => {
   try {
     console.log('🔄 Conectando a MongoDB Atlas...');
     
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
 
     console.log(`✅ MongoDB Atlas conectado exitosamente!`);
     console.log(`📍 Host: ${conn.connection.host}`);

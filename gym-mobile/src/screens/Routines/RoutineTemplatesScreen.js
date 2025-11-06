@@ -308,7 +308,7 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#6B7280'
+    personalizado: '#FF6B35'  // Naranja O2 para personalizado
   };
   return colors[tipo] || colors.personalizado;
 }
@@ -317,40 +317,218 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontSize: 16, color: '#6B7280' },
-  header: { backgroundColor: '#fff', padding: 24, paddingTop: 48, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backButton: { fontSize: 16, color: '#3B82F6', marginBottom: 12 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 4 },
-  headerSubtitle: { fontSize: 14, color: '#6B7280' },
+  header: { 
+    backgroundColor: '#1A1A1A',  // Negro O2
+    padding: 24, 
+    paddingTop: 48, 
+    borderBottomWidth: 3, 
+    borderBottomColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  backButton: { 
+    fontSize: 16, 
+    color: '#FF6B35',  // Naranja O2
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  headerTitle: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#FFFFFF', 
+    marginBottom: 4 
+  },
+  headerSubtitle: { fontSize: 14, color: '#FF8456' },  // Naranja claro
   list: { flex: 1, padding: 16 },
-  templateCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16 },
-  templateName: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
+  templateCard: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 16, 
+    padding: 16, 
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  templateName: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 8 
+  },
   templateBadges: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
+  badge: { 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  badgeText: { 
+    color: '#FFFFFF', 
+    fontSize: 11, 
+    fontWeight: 'bold', 
+    textTransform: 'uppercase' 
+  },
   templateInfo: { flexDirection: 'row', gap: 16, marginBottom: 12 },
   infoText: { fontSize: 12, color: '#6B7280' },
   daysContainer: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 12 },
-  dayChip: { backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  dayChipText: { color: '#3730A3', fontSize: 10, fontWeight: 'bold' },
-  useButton: { backgroundColor: '#8B5CF6', padding: 12, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  useButtonText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
+  dayChip: { 
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FF6B35',
+  },
+  dayChipText: { 
+    color: '#E55A2B',  // Naranja oscuro
+    fontSize: 10, 
+    fontWeight: 'bold' 
+  },
+  useButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    padding: 12, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  useButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 14, 
+    fontWeight: 'bold' 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(26, 26, 26, 0.7)',  // Overlay oscuro
+    justifyContent: 'flex-end' 
+  },
+  modalContent: { 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    maxHeight: '80%',
+    borderTopWidth: 4,
+    borderTopColor: '#FF6B35',  // Borde superior naranja
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 20, 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#FFE5DC'  // Naranja muy claro
+  },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A'  // Negro O2
+  },
   modalClose: { fontSize: 28, color: '#6B7280' },
-  groupButton: { backgroundColor: '#8B5CF6', margin: 16, marginBottom: 8, padding: 14, borderRadius: 12, alignItems: 'center' },
-  groupButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
-  clientItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', alignItems: 'center' },
-  clientItemSelected: { backgroundColor: '#EEF2FF' },
-  checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#3B82F6', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
-  checkmark: { color: '#3B82F6', fontSize: 16, fontWeight: 'bold' },
-  clientName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
+  groupButton: { 
+    backgroundColor: '#2A2A2A',  // Gris oscuro
+    margin: 16, 
+    marginBottom: 8, 
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  groupButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 15, 
+    fontWeight: 'bold' 
+  },
+  clientItem: { 
+    padding: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F3F4F6', 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  clientItemSelected: { backgroundColor: '#FFF5F2' },  // Naranja muy suave
+  checkbox: { 
+    width: 24, 
+    height: 24, 
+    borderRadius: 12, 
+    borderWidth: 2, 
+    borderColor: '#FF6B35',  // Naranja O2
+    marginRight: 12, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  checkmark: { 
+    color: '#FF6B35',  // Naranja O2
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
+  clientName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 4 
+  },
   clientEmail: { fontSize: 13, color: '#6B7280' },
-  emptyText: { textAlign: 'center', color: '#6B7280', fontSize: 14, paddingVertical: 40 },
-  confirmButton: { backgroundColor: '#10B981', margin: 16, marginTop: 8, padding: 16, borderRadius: 12, alignItems: 'center' },
-  confirmButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  groupItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  groupName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
-  groupCount: { fontSize: 13, color: '#8B5CF6' },
+  emptyText: { 
+    textAlign: 'center', 
+    color: '#6B7280', 
+    fontSize: 14, 
+    paddingVertical: 40 
+  },
+  confirmButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    margin: 16, 
+    marginTop: 8, 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  confirmButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
+  groupItem: { 
+    padding: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F3F4F6' 
+  },
+  groupName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 4 
+  },
+  groupCount: { 
+    fontSize: 13, 
+    color: '#FF6B35'  // Naranja O2
+  },
 });

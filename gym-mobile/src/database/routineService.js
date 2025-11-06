@@ -7,10 +7,93 @@ const generateId = () => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 };
 
+// ========================================
+// FUNCIONES DE VALIDACIÓN
+// ========================================
+
+// Validar datos de rutina
+const validateRoutineData = (routineData) => {
+  const errors = [];
+  
+  // Nombre obligatorio
+  if (!routineData.nombre?.trim()) {
+    errors.push('El nombre de la rutina es obligatorio');
+  } else if (routineData.nombre.trim().length < 3) {
+    errors.push('El nombre debe tener al menos 3 caracteres');
+  }
+  
+  // Al menos un día
+  if (!routineData.diasSemana || routineData.diasSemana.length === 0) {
+    errors.push('Debe seleccionar al menos un día de entrenamiento');
+  }
+  
+  // Validar días válidos
+  const diasValidos = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  if (routineData.diasSemana) {
+    const diasInvalidos = routineData.diasSemana.filter(d => !diasValidos.includes(d));
+    if (diasInvalidos.length > 0) {
+      errors.push(`Días inválidos: ${diasInvalidos.join(', ')}`);
+    }
+  }
+  
+  // Duración válida
+  if (routineData.duracionEstimada) {
+    const duracion = parseInt(routineData.duracionEstimada);
+    if (isNaN(duracion) || duracion < 10 || duracion > 300) {
+      errors.push('La duración debe estar entre 10 y 300 minutos');
+    }
+  }
+  
+  // Al menos un ejercicio
+  if (!routineData.ejercicios || routineData.ejercicios.length === 0) {
+    errors.push('Debe agregar al menos un ejercicio');
+  }
+  
+  // Validar ejercicios
+  if (routineData.ejercicios && Array.isArray(routineData.ejercicios)) {
+    routineData.ejercicios.forEach((ej, index) => {
+      if (!ej.nombre?.trim()) {
+        errors.push(`Ejercicio ${index + 1}: el nombre es obligatorio`);
+      }
+      if (!ej.series || ej.series < 1) {
+        errors.push(`Ejercicio ${index + 1}: debe tener al menos 1 serie`);
+      }
+      if (!ej.repeticiones?.trim()) {
+        errors.push(`Ejercicio ${index + 1}: las repeticiones son obligatorias`);
+      }
+    });
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+// Validar que no exista rutina duplicada
+const validateUniqueName = async (clienteId, nombre, excludeId = null) => {
+  const db = await getDatabase();
+  let query = 'SELECT id FROM rutinas WHERE clienteId = ? AND LOWER(nombre) = LOWER(?) AND activa = 1';
+  const params = [clienteId, nombre.trim()];
+  
+  if (excludeId) {
+    query += ' AND id != ?';
+    params.push(excludeId);
+  }
+  
+  try {
+    const existing = await db.getFirstAsync(query, params);
+    return !existing;
+  } catch (error) {
+    console.error('Error validando nombre de rutina:', error);
+    return false;
+  }
+};
+
 export const routineService = {
   // Crear rutina o plantilla
   create: async (clienteId, routineData) => {
-    const db = getDatabase();
+    const db = await getDatabase();
     const id = generateId();
     
     try {
@@ -85,7 +168,7 @@ export const routineService = {
 
   // Obtener rutinas de un cliente
   getByCliente: async (clienteId) => {
-    const db = getDatabase();
+    const db = await getDatabase();
     try {
       const rutinas = await db.getAllAsync(
         'SELECT * FROM rutinas WHERE clienteId = ? AND activa = 1 ORDER BY createdAt DESC',
@@ -115,7 +198,7 @@ export const routineService = {
 
   // Obtener rutina por ID
   getById: async (id) => {
-    const db = getDatabase();
+    const db = await getDatabase();
     try {
       const rutina = await db.getFirstAsync(`
         SELECT 
@@ -164,7 +247,7 @@ export const routineService = {
 
   // Obtener todas las rutinas
   getAll: async () => {
-    const db = getDatabase();
+    const db = await getDatabase();
     try {
       const rutinas = await db.getAllAsync(`
         SELECT 
@@ -214,7 +297,7 @@ export const routineService = {
 
   // Obtener rutinas agrupadas por nombre (solo rutinas con clientes, no plantillas)
   getGrouped: async () => {
-    const db = getDatabase();
+    const db = await getDatabase();
     try {
       // Solo obtener rutinas que tienen clientes asignados (no plantillas)
       const rutinas = await db.getAllAsync(
@@ -289,7 +372,7 @@ export const routineService = {
 
   // Actualizar rutina
   update: async (id, routineData) => {
-    const db = getDatabase();
+    const db = await getDatabase();
     try {
       await db.runAsync(
         `UPDATE rutinas SET 
@@ -326,7 +409,7 @@ export const routineService = {
 
   // Eliminar rutina (soft delete)
   delete: async (id) => {
-    const db = getDatabase();
+    const db = await getDatabase();
     try {
       await db.runAsync(
         'UPDATE rutinas SET activa = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
@@ -341,7 +424,7 @@ export const routineService = {
 
   // Agregar cliente a grupo
   addClientToGroup: async (baseRoutineId, clienteId) => {
-    const db = getDatabase();
+    const db = await getDatabase();
     const id = generateId();
 
     try {
@@ -405,5 +488,11 @@ export const routineService = {
       console.error('❌ Error agregando cliente:', error);
       throw error;
     }
-  }
+  },
+
+  // ========================================
+  // FUNCIONES DE VALIDACIÓN PÚBLICAS
+  // ========================================
+  validateRoutineData,
+  validateUniqueName
 };

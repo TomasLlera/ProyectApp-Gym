@@ -521,19 +521,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#1A1A1A',  // Negro O2
     padding: 24,
     paddingTop: 60,
     alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: '#FF6B35',  // Naranja O2
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fff',
+    backgroundColor: '#FF6B35',  // Naranja O2
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   avatarText: {
     fontSize: 40,
@@ -541,41 +550,45 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   email: {
     fontSize: 14,
-    color: '#E0E7FF',
+    color: '#FF8456',  // Naranja claro
     marginBottom: 16,
   },
   badge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255, 107, 53, 0.2)',  // Naranja con transparencia
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FF6B35',
   },
   badgeText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
   },
   quickStatsContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
   },
   quickStatsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#1A1A1A',  // Negro O2
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -588,15 +601,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     marginHorizontal: 4,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#FFD4C4',
   },
   quickStatValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: '#FF6B35',  // Naranja O2
     marginBottom: 4,
   },
   quickStatLabel: {
@@ -605,11 +618,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   menuContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     marginTop: 16,
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   menuItem: {
     flexDirection: 'row',
@@ -621,11 +641,13 @@ const styles = StyleSheet.create({
   menuIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#FFD4C4',
   },
   menuIcon: {
     fontSize: 20,
@@ -636,7 +658,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A1A1A',  // Negro O2
     marginBottom: 2,
   },
   menuSubtitle: {
@@ -645,7 +667,8 @@ const styles = StyleSheet.create({
   },
   menuArrow: {
     fontSize: 24,
-    color: '#9CA3AF',
+    color: '#FF6B35',  // Naranja O2
+    fontWeight: 'bold',
   },
   appInfo: {
     alignItems: 'center',
@@ -673,11 +696,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: '#DC2626',
   },
   logoutText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -685,27 +708,29 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(26, 26, 26, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 400,
-    shadowColor: '#000',
+    shadowColor: '#FF6B35',
     shadowOpacity: 0.3,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 12,
+    borderWidth: 2,
+    borderColor: '#FFE5DC',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#1A1A1A',  // Negro O2
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -724,7 +749,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A1A1A',
     backgroundColor: '#F9FAFB',
     minHeight: 48,
   },
@@ -741,7 +766,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#1A1A1A',
   },
   eyeButton: {
     padding: 12,
@@ -751,17 +776,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   passwordRules: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#FFD4C4',
   },
   passwordRulesTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#E55A2B',  // Naranja oscuro
     marginBottom: 8,
   },
   passwordRule: {
@@ -801,18 +826,20 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#FF6B35',  // Naranja O2
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#4F46E5',
+    shadowColor: '#FF6B35',
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
   },
   saveButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },

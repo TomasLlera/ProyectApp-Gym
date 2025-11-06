@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gym-mobile",
+    "name": "O2 Gym",
     "slug": "gym-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,21 +9,37 @@
     "newArchEnabled": true,
     "scheme": "gym-mobile",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1A1A1A"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gymapp.mobile"
+      "bundleIdentifier": "com.gymapp.mobile",
+      "icon": "./assets/icon.png"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1A1A1A"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gymapp.mobile"
+      "package": "com.gymapp.mobile",
+      "userInterfaceStyle": "automatic",
+      "navigationBar": {
+        "visible": "sticky-immersive",
+        "backgroundColor": "#00000000"
+      }
+    },
+    "androidNavigationBar": {
+      "visible": "sticky-immersive",
+      "barStyle": "light-content",
+      "backgroundColor": "#00000000"
+    },
+    "androidStatusBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#00000000",
+      "translucent": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,6 +47,11 @@
     "plugins": [
       "expo-secure-store",
       "expo-sqlite"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "facf0aa6-8531-4af6-a460-00c17579ccc1"
+      }
+    }
   }
 }
