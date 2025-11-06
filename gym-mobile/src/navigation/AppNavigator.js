@@ -3,9 +3,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { Text, Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useAuth } from '../context/AuthContext';
 import { useAppConfig } from '../context/AppConfigContext';
+import { theme } from '../constants/theme';
 
 
 // Screens
@@ -35,20 +37,20 @@ function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.text.secondary,
         tabBarStyle: {
           paddingBottom: 8,
           paddingTop: 8,
           height: 60,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          backgroundColor: '#fff',
+          borderTopColor: theme.colors.border,
+          backgroundColor: theme.colors.white,
         },
         headerStyle: {
-          backgroundColor: '#4F46E5',
+          backgroundColor: theme.colors.primary,
         },
-        headerTintColor: '#fff',
+        headerTintColor: theme.colors.white,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -58,7 +60,7 @@ function TabNavigator() {
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          title: `🏋️ ${appName}`,
+          title: `💪 O2 Gym`,
           tabBarLabel: 'Inicio',
           tabBarIcon: ({ color }) => <TabIcon icon="📊" />,
         }}
@@ -106,8 +108,8 @@ function RoutinesStack() {
         options={{
           headerShown: true,
           headerTitle: 'Detalle de Rutina',
-          headerStyle: { backgroundColor: '#fff' },
-          headerTintColor: '#1F2937',
+          headerStyle: { backgroundColor: theme.colors.white },
+          headerTintColor: theme.colors.text.primary,
           headerTitleStyle: { fontWeight: 'bold' },
         }}
       />
@@ -146,7 +148,17 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      onReady={async () => {
+        if (Platform.OS === 'android') {
+          try {
+            await NavigationBar.setVisibilityAsync("hidden");
+          } catch (error) {
+            console.log('⚠️ Error configurando navegación en NavigationContainer:', error);
+          }
+        }
+      }}
+    >
       <Stack.Navigator>
         {!user ? (
           <Stack.Screen
@@ -167,8 +179,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 title: 'Detalle del Cliente',
-                headerStyle: { backgroundColor: '#4F46E5' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: theme.colors.primary },
+                headerTintColor: theme.colors.white,
                 headerBackTitle: 'Volver',
               }}
             />

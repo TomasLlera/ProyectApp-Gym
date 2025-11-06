@@ -301,7 +301,7 @@ function GroupCard({ group, onPress }) {
       cardio: '#F59E0B',
       resistencia: '#10B981',
       funcional: '#3B82F6',
-      personalizado: '#6B7280'
+      personalizado: '#FF6B35'  // Naranja O2 para personalizado
     };
     return colors[tipo] || colors.personalizado;
   };
@@ -348,7 +348,7 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#6B7280'
+    personalizado: '#FF6B35'  // Naranja O2 para personalizado
   };
   return colors[tipo] || colors.personalizado;
 }
@@ -360,156 +360,311 @@ const styles = StyleSheet.create({
   
   // Header mejorado
   header: { 
-    backgroundColor: '#fff', 
+    backgroundColor: '#1A1A1A',  // Negro O2
     padding: 20, 
     paddingTop: 48, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
+    borderBottomWidth: 3,
+    borderBottomColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 },
+  headerTitle: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    color: '#FFFFFF',  // Blanco
+    marginBottom: 16 
+  },
   headerActions: { flexDirection: 'row', gap: 12 },
   
   // Botones del header rediseñados
   templateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#FF6B35',  // Naranja O2
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#3B82F6',
+    shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: '#E55A2B',  // Naranja oscuro
   },
   templateButtonIcon: { fontSize: 16, marginRight: 8 },
-  templateButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  templateButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   
   viewTemplatesButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#2A2A2A',  // Gris oscuro
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: '#FF6B35',  // Borde naranja
   },
   viewTemplatesButtonIcon: { fontSize: 16, marginRight: 8 },
-  viewTemplatesButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  viewTemplatesButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   
   // Toggle buttons
-  toggleContainer: { flexDirection: 'row', padding: 16, paddingBottom: 8, gap: 8 },
-  toggleButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' },
-  toggleButtonActive: { backgroundColor: '#3B82F6' },
+  toggleContainer: { 
+    flexDirection: 'row', 
+    padding: 16, 
+    paddingBottom: 8, 
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  toggleButton: { 
+    flex: 1, 
+    padding: 14, 
+    borderRadius: 12, 
+    backgroundColor: '#F3F4F6', 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  toggleButtonActive: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    borderColor: '#E55A2B',
+  },
   toggleText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
-  toggleTextActive: { color: '#fff' },
+  toggleTextActive: { color: '#FFFFFF' },
   
   list: { flex: 1, paddingHorizontal: 16 },
   
   // Sección para crear nueva rutina
-  createRoutineSection: { marginBottom: 16 },
+  createRoutineSection: { marginBottom: 16, marginTop: 8 },
   createNewRoutineButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#3B82F6',
+    borderColor: '#FF6B35',  // Naranja O2
     borderStyle: 'dashed',
-    shadowColor: '#000',
+    shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  createNewRoutineIcon: { fontSize: 20, marginRight: 12 },
+  createNewRoutineIcon: { fontSize: 24, marginRight: 12 },
   createNewRoutineTextContainer: { flex: 1 },
-  createNewRoutineTitle: { fontSize: 16, fontWeight: '600', color: '#1F2937' },
-  createNewRoutineSubtitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  createNewRoutineArrow: { fontSize: 18, color: '#3B82F6', fontWeight: 'bold' },
+  createNewRoutineTitle: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: '#1A1A1A'  // Negro O2
+  },
+  createNewRoutineSubtitle: { 
+    fontSize: 13, 
+    color: '#E55A2B',  // Naranja oscuro
+    marginTop: 2 
+  },
+  createNewRoutineArrow: { 
+    fontSize: 18, 
+    color: '#FF6B35',  // Naranja O2
+    fontWeight: 'bold' 
+  },
   
   // Empty state mejorado
-  emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 20 },
+  emptyState: { 
+    alignItems: 'center', 
+    paddingVertical: 60, 
+    paddingHorizontal: 20 
+  },
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, color: '#1F2937', fontWeight: '600', marginBottom: 8, textAlign: 'center' },
-  emptySubtext: { fontSize: 14, color: '#6B7280', marginBottom: 24, textAlign: 'center', lineHeight: 20 },
-  emptyButton: { backgroundColor: '#3B82F6', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 },
-  emptyButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  emptyText: { 
+    fontSize: 18, 
+    color: '#1A1A1A',  // Negro O2
+    fontWeight: '600', 
+    marginBottom: 8, 
+    textAlign: 'center' 
+  },
+  emptySubtext: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginBottom: 24, 
+    textAlign: 'center', 
+    lineHeight: 20 
+  },
+  emptyButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    paddingHorizontal: 32, 
+    paddingVertical: 14, 
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  emptyButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
   
   // Group cards
   groupCard: { 
-    backgroundColor: '#fff', 
+    backgroundColor: '#FFFFFF', 
     borderRadius: 16, 
     padding: 16, 
     marginBottom: 12, 
     borderLeftWidth: 4, 
-    borderLeftColor: '#3B82F6',
-    shadowColor: '#000',
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE5DC',  // Naranja muy claro
   },
-  groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  groupHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start', 
+    marginBottom: 12 
+  },
   groupTitle: { flex: 1 },
-  groupName: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
-  clientCount: { backgroundColor: '#EEF2FF', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, alignItems: 'center' },
-  clientCountText: { fontSize: 24, fontWeight: 'bold', color: '#3B82F6' },
-  clientCountLabel: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  groupName: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 8 
+  },
+  clientCount: { 
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    paddingVertical: 8, 
+    paddingHorizontal: 12, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+  },
+  clientCountText: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#E55A2B'  // Naranja oscuro
+  },
+  clientCountLabel: { 
+    fontSize: 11, 
+    color: '#FF6B35',  // Naranja O2
+    marginTop: 2 
+  },
   groupInfo: { flexDirection: 'row', gap: 16, marginBottom: 12 },
   clientList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  clientTag: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, fontSize: 12, color: '#374151' },
-  moreClients: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, fontSize: 12, color: '#3B82F6', fontWeight: '600' },
+  clientTag: { 
+    backgroundColor: '#F3F4F6', 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 8, 
+    fontSize: 12, 
+    color: '#374151' 
+  },
+  moreClients: { 
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 8, 
+    fontSize: 12, 
+    color: '#E55A2B',  // Naranja oscuro
+    fontWeight: '600',
+    borderWidth: 1,
+    borderColor: '#FF6B35',
+  },
   
   // Client cards mejoradas
   clientCard: { 
-    backgroundColor: '#fff', 
+    backgroundColor: '#FFFFFF', 
     borderRadius: 16, 
     padding: 18, 
     marginBottom: 16, 
     borderLeftWidth: 4, 
-    borderLeftColor: '#10B981',
-    shadowColor: '#000',
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
   },
-  clientHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  clientAvatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  clientAvatarText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  clientHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 16, 
+    paddingBottom: 16, 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#FFE5DC'  // Naranja muy claro
+  },
+  clientAvatar: { 
+    width: 54, 
+    height: 54, 
+    borderRadius: 27, 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: 14,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  clientAvatarText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
   clientInfo: { flex: 1 },
-  clientName: { fontSize: 17, fontWeight: 'bold', color: '#1F2937' },
+  clientName: { fontSize: 17, fontWeight: 'bold', color: '#1A1A1A' },
   clientEmail: { fontSize: 14, color: '#6B7280', marginTop: 2 },
-  clientPhone: { fontSize: 14, color: '#10B981', marginTop: 1, fontWeight: '500' },
-  routineCount: { backgroundColor: '#DCFCE7', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center' },
-  routineCountText: { fontSize: 22, fontWeight: 'bold', color: '#10B981' },
-  routineCountLabel: { fontSize: 10, color: '#059669', marginTop: 1 },
+  clientPhone: { fontSize: 14, color: '#FF6B35', marginTop: 1, fontWeight: '500' },
+  routineCount: { 
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    paddingVertical: 10, 
+    paddingHorizontal: 14, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+  },
+  routineCountText: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#E55A2B'  // Naranja oscuro
+  },
+  routineCountLabel: { 
+    fontSize: 10, 
+    color: '#FF6B35',  // Naranja O2
+    marginTop: 1 
+  },
   
   // Botón para agregar rutina al cliente
   addRoutineToClientButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
     padding: 12,
     borderRadius: 10,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#FF6B35',  // Naranja O2
   },
   addRoutineToClientIcon: { fontSize: 16, marginRight: 10 },
-  addRoutineToClientText: { flex: 1, fontSize: 14, color: '#059669', fontWeight: '600' },
+  addRoutineToClientText: { 
+    flex: 1, 
+    fontSize: 14, 
+    color: '#E55A2B',  // Naranja oscuro
+    fontWeight: '600' 
+  },
   
   // Routine items
   routineItem: { 
@@ -518,18 +673,53 @@ const styles = StyleSheet.create({
     padding: 14, 
     marginBottom: 10, 
     borderWidth: 1, 
-    borderColor: '#E5E7EB' 
+    borderColor: '#E5E7EB',
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',  // Naranja O2
   },
-  routineItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  routineItemName: { fontSize: 16, fontWeight: '600', color: '#1F2937', flex: 1 },
+  routineItemHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 10 
+  },
+  routineItemName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    flex: 1 
+  },
   routineItemInfo: { flexDirection: 'row', gap: 16, marginBottom: 10 },
   
   // Badges y botones
-  tipoBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
-  tipoBadgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
+  tipoBadge: { 
+    paddingHorizontal: 10, 
+    paddingVertical: 5, 
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  tipoBadgeText: { 
+    color: '#FFFFFF', 
+    fontSize: 11, 
+    fontWeight: 'bold', 
+    textTransform: 'uppercase' 
+  },
   infoText: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  deleteButton: { backgroundColor: '#FEE2E2', padding: 10, borderRadius: 8, alignItems: 'center', marginTop: 8 },
-  deleteButtonText: { color: '#DC2626', fontSize: 13, fontWeight: 'bold' },
+  deleteButton: { 
+    backgroundColor: '#FEE2E2', 
+    padding: 10, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  deleteButtonText: { 
+    color: '#DC2626', 
+    fontSize: 13, 
+    fontWeight: 'bold' 
+  },
   
   // Botones antiguos (mantener para compatibilidad)
   addButton: { backgroundColor: '#3B82F6', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },

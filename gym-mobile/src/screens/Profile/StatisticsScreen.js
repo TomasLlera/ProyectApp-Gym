@@ -292,26 +292,28 @@ const styles = StyleSheet.create({
   
   // Header
   header: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#1A1A1A',  // Negro O2
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderBottomWidth: 3,
+    borderBottomColor: '#FF6B35',  // Naranja O2
   },
   backButton: {
     padding: 8,
   },
   backButtonText: {
-    color: '#fff',
+    color: '#FF6B35',  // Naranja O2
     fontSize: 16,
     fontWeight: '600',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#FFFFFF',
     flex: 1,
     textAlign: 'center',
   },
@@ -321,16 +323,20 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   statCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',  // Naranja O2
   },
   statIcon: {
     fontSize: 48,
@@ -342,7 +348,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FF6B35',  // Naranja O2
     marginBottom: 4,
   },
   statLabel: {
@@ -356,19 +362,23 @@ const styles = StyleSheet.create({
   },
   miniStatCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+    borderTopWidth: 3,
+    borderTopColor: '#FF6B35',
   },
   miniStatValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FF6B35',  // Naranja O2
     marginBottom: 4,
   },
   miniStatLabel: {
@@ -385,17 +395,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#1A1A1A',  // Negro O2
     marginBottom: 16,
   },
   calendarContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -407,19 +419,21 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFF5F2',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD4C4',
   },
   navButtonText: {
     fontSize: 24,
-    color: '#4F46E5',
+    color: '#FF6B35',  // Naranja O2
     fontWeight: 'bold',
   },
   monthTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#1A1A1A',  // Negro O2
   },
   
   weekDaysRow: {
@@ -452,32 +466,34 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   selectedDay: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#FF6B35',  // Naranja O2
   },
   todayDay: {
-    backgroundColor: '#E0E7FF',
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
   },
   incomeDay: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
+    borderWidth: 1,
+    borderColor: '#FFD4C4',
   },
   dayText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#1A1A1A',  // Negro O2
   },
   selectedDayText: {
-    color: '#fff',
+    color: '#FFFFFF',
   },
   todayDayText: {
-    color: '#4F46E5',
+    color: '#FF6B35',  // Naranja O2
   },
   incomeDayText: {
-    color: '#16A34A',
+    color: '#E55A2B',  // Naranja oscuro
   },
   incomeText: {
     fontSize: 8,
     fontWeight: '600',
-    color: '#16A34A',
+    color: '#E55A2B',  // Naranja oscuro
     marginTop: 1,
   },
 
@@ -487,13 +503,17 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   dayDetailCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',
   },
   dayDetailHeader: {
     flexDirection: 'row',
@@ -507,7 +527,7 @@ const styles = StyleSheet.create({
   dayIncomeValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#16A34A',
+    color: '#FF6B35',  // Naranja O2
     marginBottom: 2,
   },
   dayIncomeLabel: {

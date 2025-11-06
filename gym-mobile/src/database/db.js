@@ -7,6 +7,15 @@ let db = null;
 
 export const initDatabase = async () => {
   try {
+    // Si ya existe una instancia, la cerramos primero
+    if (db) {
+      try {
+        await db.closeAsync();
+      } catch (closeError) {
+        console.warn('Advertencia cerrando BD anterior:', closeError);
+      }
+    }
+    
     db = await SQLite.openDatabaseAsync(DB_NAME);
     console.log('✅ Database inicializada');
     
@@ -18,9 +27,27 @@ export const initDatabase = async () => {
   }
 };
 
-export const getDatabase = () => {
+export const getDatabase = async () => {
   if (!db) {
-    throw new Error('Database no inicializada. Llamar initDatabase() primero.');
+    console.log('🔄 Base de datos no inicializada, reinicializando...');
+    await initDatabase();
+  }
+  
+  // Verificar que la conexión siga activa
+  try {
+    await db.getFirstAsync('SELECT 1');
+    return db;
+  } catch (error) {
+    console.log('🔄 Conexión perdida, reinicializando BD...');
+    await initDatabase();
+    return db;
+  }
+};
+
+// Función síncrona para compatibilidad (solo si la BD ya está inicializada)
+export const getDatabaseSync = () => {
+  if (!db) {
+    throw new Error('Database no inicializada. Usar getDatabase() o initDatabase() primero.');
   }
   return db;
 };
@@ -33,8 +60,8 @@ const createTables = async () => {
         id TEXT PRIMARY KEY,
         nombre TEXT NOT NULL,
         apellido TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        documento TEXT UNIQUE NOT NULL,
+        email TEXT NOT NULL,
+        documento TEXT NOT NULL,
         telefono TEXT,
         tipoPlan TEXT DEFAULT 'mensual',
         montoMensual REAL NOT NULL,
@@ -46,6 +73,17 @@ const createTables = async () => {
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Crear índices únicos que solo aplican a clientes activos
+    await db.execAsync(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_documento_activo 
+      ON clientes (documento) WHERE activo = 1;
+    `);
+
+    await db.execAsync(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_email_activo 
+      ON clientes (email) WHERE activo = 1;
     `);
 
     // Tabla de Rutinas
@@ -179,17 +217,62 @@ const runMigrations = async () => {
       );
     `);
 
-    // Copiar datos existentes
+    // Copiar datos existentes de rutinas
     await db.execAsync(`
       INSERT OR IGNORE INTO rutinas_new 
       SELECT * FROM rutinas;
     `);
 
-    // Reemplazar tabla original
+    // Reemplazar tabla rutinas
     await db.execAsync(`DROP TABLE IF EXISTS rutinas_old;`);
     await db.execAsync(`ALTER TABLE rutinas RENAME TO rutinas_old;`);
     await db.execAsync(`ALTER TABLE rutinas_new RENAME TO rutinas;`);
     await db.execAsync(`DROP TABLE IF EXISTS rutinas_old;`);
+
+    // Migración 2: Remover restricción UNIQUE de documento en clientes 
+    // (Para permitir soft delete y reutilizar DNIs)
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS clientes_new (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        apellido TEXT NOT NULL,
+        email TEXT NOT NULL,
+        documento TEXT NOT NULL,
+        telefono TEXT,
+        tipoPlan TEXT DEFAULT 'mensual',
+        montoMensual REAL NOT NULL,
+        fechaVencimiento TEXT,
+        estadoPago TEXT DEFAULT 'pendiente',
+        fechaUltimoPago TEXT,
+        fechaRegistro TEXT DEFAULT CURRENT_TIMESTAMP,
+        activo INTEGER DEFAULT 1,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Crear índice compuesto para garantizar unicidad solo en clientes activos
+    await db.execAsync(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_documento_activo 
+      ON clientes_new (documento) WHERE activo = 1;
+    `);
+
+    await db.execAsync(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_email_activo 
+      ON clientes_new (email) WHERE activo = 1;
+    `);
+
+    // Copiar datos existentes de clientes
+    await db.execAsync(`
+      INSERT OR IGNORE INTO clientes_new 
+      SELECT * FROM clientes;
+    `);
+
+    // Reemplazar tabla clientes
+    await db.execAsync(`DROP TABLE IF EXISTS clientes_old;`);
+    await db.execAsync(`ALTER TABLE clientes RENAME TO clientes_old;`);
+    await db.execAsync(`ALTER TABLE clientes_new RENAME TO clientes;`);
+    await db.execAsync(`DROP TABLE IF EXISTS clientes_old;`);
 
     console.log('✅ Migraciones completadas');
   } catch (error) {

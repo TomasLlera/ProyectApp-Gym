@@ -525,7 +525,7 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#6B7280'
+    personalizado: '#FF6B35'  // Naranja O2 para personalizado
   };
   return colors[tipo] || colors.personalizado;
 }
@@ -546,50 +546,291 @@ function getGrupoColor(grupo) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { backgroundColor: '#fff', padding: 24, paddingTop: 48, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backButton: { fontSize: 16, color: '#3B82F6', marginBottom: 12 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 },
+  header: { 
+    backgroundColor: '#1A1A1A',  // Negro O2
+    padding: 24, 
+    paddingTop: 48, 
+    borderBottomWidth: 3, 
+    borderBottomColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  backButton: { 
+    fontSize: 16, 
+    color: '#FF6B35',  // Naranja O2
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  headerTitle: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#FFFFFF',  // Blanco
+    marginBottom: 8 
+  },
   headerBadges: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: '#6B7280' },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
-  headerSubtitle: { fontSize: 14, color: '#6B7280' },
-  actions: { flexDirection: 'row', padding: 16, gap: 8 },
-  actionBtn: { padding: 14, borderRadius: 12, alignItems: 'center', paddingHorizontal: 20 },
-  actionBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  badge: { 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 12, 
+    backgroundColor: '#6B7280',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  badgeText: { 
+    color: '#FFFFFF', 
+    fontSize: 11, 
+    fontWeight: 'bold', 
+    textTransform: 'uppercase' 
+  },
+  headerSubtitle: { 
+    fontSize: 14, 
+    color: '#FF8456'  // Naranja claro
+  },
+  actions: { 
+    flexDirection: 'row', 
+    padding: 16, 
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  actionBtn: { 
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  actionBtnText: { 
+    color: '#FFFFFF', 
+    fontSize: 14, 
+    fontWeight: 'bold' 
+  },
   content: { flex: 1 },
-  section: { backgroundColor: '#fff', margin: 16, marginTop: 0, padding: 16, borderRadius: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 },
-  clientCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, marginBottom: 8 },
-  clientAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  clientAvatarText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  section: { 
+    backgroundColor: '#FFFFFF', 
+    margin: 16, 
+    marginTop: 0, 
+    padding: 16, 
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 16 
+  },
+  clientCard: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF5F2',  // Naranja muy suave
+    padding: 12, 
+    borderRadius: 12, 
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FFD4C4',
+  },
+  clientAvatar: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  clientAvatarText: { 
+    color: '#FFFFFF', 
+    fontSize: 14, 
+    fontWeight: 'bold' 
+  },
   clientInfo: { flex: 1 },
-  clientName: { fontSize: 15, fontWeight: '600', color: '#1F2937' },
-  clientEmail: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  removeButton: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center' },
-  removeButtonText: { color: '#DC2626', fontSize: 18, fontWeight: 'bold' },
+  clientName: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#1A1A1A'  // Negro O2
+  },
+  clientEmail: { 
+    fontSize: 12, 
+    color: '#6B7280', 
+    marginTop: 2 
+  },
+  removeButton: { 
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    backgroundColor: '#FEE2E2', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  removeButtonText: { 
+    color: '#DC2626', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
   infoRow: { marginBottom: 16 },
-  infoLabel: { fontSize: 14, color: '#6B7280', marginBottom: 8 },
-  infoValue: { fontSize: 16, color: '#1F2937', fontWeight: '600' },
+  infoLabel: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginBottom: 8 
+  },
+  infoValue: { 
+    fontSize: 16, 
+    color: '#1A1A1A',  // Negro O2
+    fontWeight: '600' 
+  },
   daysContainer: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  dayChip: { backgroundColor: '#3B82F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  dayChipText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  exerciseCard: { flexDirection: 'row', backgroundColor: '#F9FAFB', borderRadius: 12, padding: 12, marginBottom: 8 },
-  exerciseNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  exerciseNumberText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  dayChip: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  dayChipText: { 
+    color: '#FFFFFF', 
+    fontSize: 11, 
+    fontWeight: 'bold' 
+  },
+  exerciseCard: { 
+    flexDirection: 'row', 
+    backgroundColor: '#F9FAFB', 
+    borderRadius: 12, 
+    padding: 12, 
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  exerciseNumber: { 
+    width: 28, 
+    height: 28, 
+    borderRadius: 14, 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  exerciseNumberText: { 
+    color: '#FFFFFF', 
+    fontSize: 14, 
+    fontWeight: 'bold' 
+  },
   exerciseContent: { flex: 1 },
-  exerciseName: { fontSize: 15, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
-  exerciseDetails: { fontSize: 12, color: '#6B7280', marginBottom: 6 },
-  grupoMuscular: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  grupoMuscularText: { color: '#fff', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
-  warningBox: { backgroundColor: '#FEF3C7', margin: 16, marginTop: 0, padding: 16, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#F59E0B' },
-  warningText: { fontSize: 13, color: '#92400E', lineHeight: 18 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
-  modalClose: { fontSize: 28, color: '#6B7280' },
-  modalClientItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  modalClientName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
-  modalClientEmail: { fontSize: 13, color: '#6B7280' },
-  emptyText: { textAlign: 'center', color: '#6B7280', fontSize: 14, paddingVertical: 40 },
+  exerciseName: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 4 
+  },
+  exerciseDetails: { 
+    fontSize: 12, 
+    color: '#6B7280', 
+    marginBottom: 6 
+  },
+  grupoMuscular: { 
+    alignSelf: 'flex-start', 
+    paddingHorizontal: 8, 
+    paddingVertical: 3, 
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  grupoMuscularText: { 
+    color: '#FFFFFF', 
+    fontSize: 10, 
+    fontWeight: 'bold', 
+    textTransform: 'uppercase' 
+  },
+  warningBox: { 
+    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    margin: 16, 
+    marginTop: 0, 
+    padding: 16, 
+    borderRadius: 12, 
+    borderLeftWidth: 4, 
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderWidth: 1,
+    borderColor: '#FFD4C4',
+  },
+  warningText: { 
+    fontSize: 13, 
+    color: '#E55A2B',  // Naranja oscuro
+    lineHeight: 18 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(26, 26, 26, 0.7)',  // Overlay oscuro
+    justifyContent: 'flex-end' 
+  },
+  modalContent: { 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    maxHeight: '70%',
+    borderTopWidth: 4,
+    borderTopColor: '#FF6B35',  // Borde superior naranja
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 20, 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#FFE5DC'  // Naranja muy claro
+  },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A'  // Negro O2
+  },
+  modalClose: { 
+    fontSize: 28, 
+    color: '#6B7280' 
+  },
+  modalClientItem: { 
+    padding: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F3F4F6' 
+  },
+  modalClientName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 4 
+  },
+  modalClientEmail: { 
+    fontSize: 13, 
+    color: '#6B7280' 
+  },
+  emptyText: { 
+    textAlign: 'center', 
+    color: '#6B7280', 
+    fontSize: 14, 
+    paddingVertical: 40 
+  },
 });

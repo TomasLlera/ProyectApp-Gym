@@ -1,4 +1,5 @@
-// src/screens/Clients/ClientsScreen.js
+// src/screens/Clients/ClientsScreen.js - CON VALIDACIONES ✅
+
 import React, { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -16,6 +17,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useDatabase } from '../../context/DatabaseContext';
+import { theme } from '../../constants/theme';
 
 export default function ClientsScreen({ navigation, route }) {
   const { clients } = useDatabase();
@@ -26,9 +28,13 @@ export default function ClientsScreen({ navigation, route }) {
   const [statusFilter, setStatusFilter] = useState(route.params?.status || '');
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    loadClients();
-  }, [statusFilter, searchTerm]);
+  // 🔥 AUTO-REFRESH cuando la pantalla toma foco
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 Pantalla Clientes enfocada - Recargando datos...');
+      loadClients();
+    }, [statusFilter, searchTerm])
+  );
 
   // Actualizar filtro cuando cambien los parámetros de navegación
   useEffect(() => {
@@ -36,18 +42,6 @@ export default function ClientsScreen({ navigation, route }) {
       setStatusFilter(route.params.status);
     }
   }, [route.params?.status]);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      if (route.params?.refresh || route.params?.updated) {
-        loadClients();
-      }
-      // También actualizar filtro al enfocar la pantalla
-      if (route.params?.status !== undefined) {
-        setStatusFilter(route.params.status);
-      }
-    }, [route.params?.refresh, route.params?.updated, route.params?.status])
-  );
 
   const loadClients = async () => {
     try {
@@ -72,6 +66,7 @@ export default function ClientsScreen({ navigation, route }) {
       }
       
       setClients(filteredClients);
+      console.log(`✅ ${filteredClients.length} clientes cargados`);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar los clientes');
     } finally {
@@ -102,7 +97,7 @@ export default function ClientsScreen({ navigation, route }) {
             try {
               await clients.updatePaymentStatus(clientId, 'pagado');
               Alert.alert('Éxito', 'Cliente marcado como pagado');
-              loadClients();
+              loadClients(); // Recargar lista
             } catch (error) {
               Alert.alert('Error', 'No se pudo actualizar el estado');
             }
@@ -130,7 +125,6 @@ export default function ClientsScreen({ navigation, route }) {
         style={[styles.clientCard, { borderLeftColor: badge.color }]}
         onPress={() => {
           const idToUse = item._id || item.id;
-          console.log('Cliente seleccionado:', idToUse);
           if (!idToUse) {
             Alert.alert('Error', 'ID de cliente no válido');
             return;
@@ -246,7 +240,7 @@ export default function ClientsScreen({ navigation, route }) {
             onPress={() => setStatusFilter('pendiente')}
           >
             <Text style={[styles.filterText, statusFilter === 'pendiente' && styles.filterTextActive]}>
-              🕒 Pendientes
+              🕐 Pendientes
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -283,14 +277,16 @@ export default function ClientsScreen({ navigation, route }) {
         onClose={() => setShowModal(false)}
         onSuccess={() => {
           setShowModal(false);
-          loadClients();
+          loadClients(); // 🔥 Recargar lista automáticamente
         }}
       />
     </View>
   );
 }
 
-// Modal para crear cliente
+// ============================================
+// 🆕 MODAL CON VALIDACIONES COMPLETAS
+// ============================================
 function CreateClientModal({ visible, onClose, onSuccess }) {
   const { clients } = useDatabase();
   const [formData, setFormData] = useState({
@@ -299,32 +295,90 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
     email: '',
     documento: '',
     telefono: '',
-    tipoPlan: 'mensual',  // ← NUEVO
+    tipoPlan: 'mensual',
     montoMensual: '3500',
   });
   const [loading, setLoading] = useState(false);
 
+  // ============================================
+  // ✅ VERSIÓN CON TODAS LAS VALIDACIONES
+  // ============================================
   const handleSubmit = async () => {
+    // ========================================
+    // VALIDACIÓN 1: Campos obligatorios
+    // ========================================
     if (!formData.nombre || !formData.apellido || !formData.email || !formData.documento) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
     }
 
-    // Validar email
+    // ========================================
+    // VALIDACIÓN 2: Longitud mínima de nombres
+    // ========================================
+    if (formData.nombre.trim().length < 2) {
+      Alert.alert('Error', 'El nombre debe tener al menos 2 caracteres');
+      return;
+    }
+
+    if (formData.apellido.trim().length < 2) {
+      Alert.alert('Error', 'El apellido debe tener al menos 2 caracteres');
+      return;
+    }
+
+    // ========================================
+    // VALIDACIÓN 3: Nombres sin números
+    // ========================================
+    const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    if (!nombreRegex.test(formData.nombre.trim())) {
+      Alert.alert('Error', 'El nombre no puede contener números o caracteres especiales');
+      return;
+    }
+
+    if (!nombreRegex.test(formData.apellido.trim())) {
+      Alert.alert('Error', 'El apellido no puede contener números o caracteres especiales');
+      return;
+    }
+
+    // ========================================
+    // VALIDACIÓN 4: Formato de email
+    // ========================================
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       Alert.alert('Error', 'Por favor ingresa un email válido');
       return;
     }
 
-    // Validar DNI - exactamente 8 dígitos
+    // ========================================
+    // VALIDACIÓN 5: DNI exactamente 8 dígitos
+    // ========================================
     const dniRegex = /^\d{8}$/;
     if (!dniRegex.test(formData.documento)) {
       Alert.alert('Error', 'El DNI debe tener exactamente 8 dígitos numéricos');
       return;
     }
 
-    // Validar teléfono si se ingresó
+    // ========================================
+    // VALIDACIÓN 6: Monto válido
+    // ========================================
+    const monto = parseFloat(formData.montoMensual);
+    if (isNaN(monto) || monto <= 0) {
+      Alert.alert('Error', 'El monto debe ser mayor a 0');
+      return;
+    }
+
+    if (monto < 100) {
+      Alert.alert('Error', 'El monto debe ser al menos $100');
+      return;
+    }
+
+    if (monto > 1000000) {
+      Alert.alert('Error', 'El monto no puede superar $1,000,000');
+      return;
+    }
+
+    // ========================================
+    // VALIDACIÓN 7: Teléfono (si se ingresó)
+    // ========================================
     if (formData.telefono.trim()) {
       let telefono = formData.telefono.trim();
       
@@ -347,23 +401,41 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       formData.telefono = telefono;
     }
 
-    // Verificar si ya existe un cliente con el mismo DNI
+    // ========================================
+    // VALIDACIÓN 8 & 9: Email y DNI únicos (usando funciones del servicio)
+    // ========================================
     setLoading(true);
     try {
-      const existingClients = await clients.getAll();
-      const duplicateDNI = existingClients.find(client => client.documento === formData.documento);
-      
-      if (duplicateDNI) {
-        Alert.alert('Error', 'Ya existe un cliente con ese DNI');
+      // Usar las funciones de validación del servicio que manejan correctamente los soft deletes
+      const isEmailUnique = await clients.validateUniqueEmail(formData.email.toLowerCase().trim());
+      if (!isEmailUnique) {
+        Alert.alert('Error', 'Ya existe un cliente activo con ese email');
         setLoading(false);
         return;
       }
 
+      const isDNIUnique = await clients.validateUniqueDocumento(formData.documento.trim());
+      if (!isDNIUnique) {
+        Alert.alert('Error', 'Ya existe un cliente activo con ese DNI');
+        setLoading(false);
+        return;
+      }
+
+      // ========================================
+      // ✅ TODAS LAS VALIDACIONES PASADAS - CREAR CLIENTE
+      // ========================================
       await clients.create({
         ...formData,
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        email: formData.email.toLowerCase().trim(),
+        documento: formData.documento.trim(),
         montoMensual: parseFloat(formData.montoMensual),
       });
+
       Alert.alert('Éxito', '✅ Cliente creado exitosamente');
+      
+      // Reset form
       setFormData({
         nombre: '',
         apellido: '',
@@ -373,6 +445,7 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
         tipoPlan: 'mensual',
         montoMensual: '3500',
       });
+      
       onSuccess();
     } catch (error) {
       console.error('Error creando cliente:', error);
@@ -435,60 +508,28 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
             />
             <TextInput
               style={styles.input}
-              placeholder="DNI *"
+              placeholder="DNI * (8 dígitos)"
               value={formData.documento}
               onChangeText={(text) => setFormData({ ...formData, documento: text })}
               keyboardType="numeric"
+              maxLength={8}
             />
 
-            {/* SELECTOR DE PLAN - NUEVO */}
+            {/* Selector de Plan */}
             <View style={styles.planSelector}>
               <Text style={styles.planLabel}>Tipo de Plan *</Text>
               <View style={styles.planOptions}>
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'diario' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'diario' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'diario' && styles.planChipTextActive]}>
-                    📅 Diario
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'semanal' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'semanal' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'semanal' && styles.planChipTextActive]}>
-                    🗓️ Semanal
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'quincenal' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'quincenal' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'quincenal' && styles.planChipTextActive]}>
-                    📆 Quincenal
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'mensual' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'mensual' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'mensual' && styles.planChipTextActive]}>
-                    📅 Mensual
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.planChip, formData.tipoPlan === 'anual' && styles.planChipActive]}
-                  onPress={() => setFormData({ ...formData, tipoPlan: 'anual' })}
-                >
-                  <Text style={[styles.planChipText, formData.tipoPlan === 'anual' && styles.planChipTextActive]}>
-                    🎯 Anual
-                  </Text>
-                </TouchableOpacity>
+                {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
+                  <TouchableOpacity
+                    key={plan}
+                    style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
+                    onPress={() => setFormData({ ...formData, tipoPlan: plan })}
+                  >
+                    <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
+                      {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
@@ -499,15 +540,14 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
                 placeholder="Número de celular (ej: 1123456789)"
                 value={formData.telefono.replace('+54', '')}
                 onChangeText={(text) => {
-                  // Solo permitir números
                   const numbersOnly = text.replace(/[^0-9]/g, '');
-                  // Actualizar el estado con +54 incluido
                   setFormData({ ...formData, telefono: numbersOnly ? '+54' + numbersOnly : '' });
                 }}
                 keyboardType="phone-pad"
-                maxLength={15} // Limitar la longitud
+                maxLength={15}
               />
             </View>
+
             <TextInput
               style={styles.input}
               placeholder="Monto Mensual *"
@@ -522,7 +562,7 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
               disabled={loading}
             >
               <Text style={styles.submitButtonText}>
-                {loading ? 'Creando...' : 'Crear Cliente'}
+                {loading ? 'Validando...' : 'Crear Cliente'}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -533,12 +573,12 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   searchContainer: {
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.colors.border,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -550,8 +590,8 @@ const styles = StyleSheet.create({
   searchIcon: { fontSize: 20, marginRight: 8 },
   searchInput: { flex: 1, padding: 12, fontSize: 16, color: '#1F2937' },
   filterContainer: { 
-    backgroundColor: '#fff',
-    shadowColor: '#000',
+    backgroundColor: theme.colors.white,
+    shadowColor: theme.colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
@@ -582,9 +622,9 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   filterChipActive: { 
-    backgroundColor: '#4F46E5',
-    borderColor: '#3730A3',
-    shadowColor: '#4F46E5',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primaryDark,
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -605,33 +645,33 @@ const styles = StyleSheet.create({
   },
   listContainer: { padding: 16 },
   clientCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.white,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: theme.colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
     borderLeftWidth: 4,
-    borderLeftColor: '#4F46E5',
+    borderLeftColor: theme.colors.primary,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   avatarCircle: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#4F46E5',
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   avatarInitial: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   clientInfo: { flex: 1 },
-  clientName: { fontSize: 16, fontWeight: 'bold', color: '#1F2937', marginBottom: 2 },
-  clientEmail: { fontSize: 13, color: '#6B7280', marginBottom: 2 },
-  clientDoc: { fontSize: 12, color: '#9CA3AF' },
+  clientName: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 2 },
+  clientEmail: { fontSize: 13, color: theme.colors.text.secondary, marginBottom: 2 },
+  clientDoc: { fontSize: 12, color: theme.colors.text.light },
   statusBadge: { 
     paddingHorizontal: 10, 
     paddingVertical: 6, 
@@ -673,16 +713,16 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#4F46E5',
+    backgroundColor: theme.colors.primary, // Naranja O2
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#4F46E5',
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 12,
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: theme.colors.white,
     transform: [{ scale: 1 }],
   },
   fabIcon: { 
@@ -699,7 +739,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 40,
@@ -712,8 +752,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
-  modalClose: { fontSize: 28, color: '#6B7280' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.colors.text.primary },
+  modalClose: { fontSize: 28, color: theme.colors.text.secondary },
   formContainer: { padding: 20 },
   input: {
     backgroundColor: '#F3F4F6',
@@ -745,7 +785,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   submitButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: theme.colors.primary,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -776,8 +816,8 @@ const styles = StyleSheet.create({
     borderColor: '#F3F4F6',
   },
   planChipActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#4F46E5',
+    backgroundColor: '#FFF3ED',
+    borderColor: theme.colors.primary,
   },
   planChipText: {
     fontSize: 13,
@@ -785,6 +825,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   planChipTextActive: {
-    color: '#4F46E5',
+    color: theme.colors.primary,
   },
 });

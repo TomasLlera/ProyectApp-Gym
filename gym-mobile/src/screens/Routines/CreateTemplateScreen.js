@@ -372,42 +372,162 @@ export default function CreateTemplateScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { backgroundColor: '#fff', padding: 24, paddingTop: 48, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backButton: { fontSize: 16, color: '#EF4444', marginBottom: 12 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginBottom: 4 },
-  headerSubtitle: { fontSize: 13, color: '#6B7280' },
+  header: { 
+    backgroundColor: '#1A1A1A',  // Negro O2
+    padding: 24, 
+    paddingTop: 48, 
+    borderBottomWidth: 3, 
+    borderBottomColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  backButton: { 
+    fontSize: 16, 
+    color: '#FF6B35',  // Naranja O2
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  headerTitle: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#FFFFFF', 
+    marginBottom: 4 
+  },
+  headerSubtitle: { fontSize: 13, color: '#FF8456' },  // Naranja claro
   form: { flex: 1, padding: 16 },
   section: { marginBottom: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 16, borderWidth: 1, borderColor: '#E5E7EB' },
+  input: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 16, 
+    borderWidth: 2, 
+    borderColor: '#E5E7EB',
+    color: '#1A1A1A',
+  },
   textArea: { height: 80, textAlignVertical: 'top' },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
-  chipActive: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
+  chip: { 
+    paddingVertical: 8, 
+    paddingHorizontal: 14, 
+    borderRadius: 20, 
+    backgroundColor: '#F3F4F6', 
+    borderWidth: 2, 
+    borderColor: '#E5E7EB' 
+  },
+  chipActive: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    borderColor: '#E55A2B' 
+  },
   chipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  chipTextActive: { color: '#fff' },
-  addExerciseButton: { backgroundColor: '#3B82F6', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-  addExerciseButtonText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  chipTextActive: { color: '#FFFFFF' },
+  addExerciseButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    paddingHorizontal: 14, 
+    paddingVertical: 8, 
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  addExerciseButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: 'bold' },
   emptyText: { textAlign: 'center', color: '#9CA3AF', fontSize: 14, paddingVertical: 20 },
-  exerciseItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 8 },
-  exerciseNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  exerciseNumberText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  exerciseItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    padding: 12, 
+    borderRadius: 12, 
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+  },
+  exerciseNumber: { 
+    width: 28, 
+    height: 28, 
+    borderRadius: 14, 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  exerciseNumberText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
   exerciseInfo: { flex: 1 },
-  exerciseName: { fontSize: 15, fontWeight: '600', color: '#1F2937', marginBottom: 2 },
+  exerciseName: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 2 
+  },
   exerciseDetails: { fontSize: 12, color: '#6B7280' },
   removeButton: { fontSize: 20, padding: 4 },
-  submitButton: { backgroundColor: '#10B981', padding: 16, borderRadius: 12, alignItems: 'center', marginVertical: 24 },
+  submitButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginVertical: 24,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(26, 26, 26, 0.7)', 
+    justifyContent: 'flex-end' 
+  },
+  modalContent: { 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    maxHeight: '80%',
+    borderTopWidth: 4,
+    borderTopColor: '#FF6B35',  // Naranja O2
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 20, 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#FFE5DC'  // Naranja muy claro
+  },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A'  // Negro O2
+  },
   modalClose: { fontSize: 28, color: '#6B7280' },
   exerciseForm: { padding: 20 },
   row: { flexDirection: 'row', gap: 12 },
   col: { flex: 1 },
-  addButton: { backgroundColor: '#10B981', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-  addButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  addButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginTop: 20,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  addButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
 });

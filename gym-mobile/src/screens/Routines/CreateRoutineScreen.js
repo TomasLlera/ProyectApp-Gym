@@ -1,4 +1,5 @@
-// src/screens/Routines/CreateRoutineScreen.js
+// src/screens/Routines/CreateRoutineScreen.js - CON VALIDACIONES ✅
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -29,12 +30,11 @@ export default function CreateRoutineScreen({ navigation }) {
   const [showClientModal, setShowClientModal] = useState(false);
   const [showExerciseModal, setShowExerciseModal] = useState(false);
   const [clientsList, setClientsList] = useState([]);
-  const [selectedClients, setSelectedClients] = useState([]); // 🔥 CAMBIADO a array
+  const [selectedClients, setSelectedClients] = useState([]);
   const [groups, setGroups] = useState([]);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Ejercicio temporal para agregar
   const [newExercise, setNewExercise] = useState({
     nombre: '',
     series: '3',
@@ -131,20 +131,29 @@ export default function CreateRoutineScreen({ navigation }) {
     );
   };
 
+  // ============================================
+  // 🔥 VALIDACIONES COMPLETAS
+  // ============================================
   const handleSubmit = async () => {
-    // Validaciones
+    // VALIDACIÓN 1: Nombre requerido
     if (!formData.nombre.trim()) {
       Alert.alert('Error', 'El nombre de la rutina es requerido');
       return;
     }
+
+    // VALIDACIÓN 2: Clientes seleccionados
     if (selectedClients.length === 0) {
       Alert.alert('Error', 'Debes seleccionar al menos un cliente');
       return;
     }
+
+    // VALIDACIÓN 3: Días de entrenamiento
     if (formData.diasSemana.length === 0) {
       Alert.alert('Error', 'Selecciona al menos un día de entrenamiento');
       return;
     }
+
+    // VALIDACIÓN 4: Ejercicios agregados
     if (ejercicios.length === 0) {
       Alert.alert('Error', 'Debes agregar al menos un ejercicio');
       return;
@@ -152,30 +161,105 @@ export default function CreateRoutineScreen({ navigation }) {
 
     setLoading(true);
     try {
-      console.log('🔄 Creando rutinas para grupo:', {
-        nombre: formData.nombre,
-        clientes: selectedClients.length,
-        diasSemana: formData.diasSemana,
-        ejercicios: ejercicios.length
+      console.log('🔄 Validando clientes duplicados en rutina...');
+
+      // ============================================
+      // 🔥 VALIDACIÓN 5: CLIENTES DUPLICADOS EN LA MISMA RUTINA
+      // ============================================
+      const allRoutines = await routines.getAll();
+      const clientesConRutinaDuplicada = [];
+
+      for (const clienteId of selectedClients) {
+        // Buscar si el cliente ya tiene esta rutina
+        const rutinaExistente = allRoutines.find(r => 
+          r.clienteId === clienteId && 
+          r.nombre.toLowerCase() === formData.nombre.toLowerCase() &&
+          r.activa === 1
+        );
+
+        if (rutinaExistente) {
+          const cliente = clientsList.find(c => (c.id || c._id) === clienteId);
+          clientesConRutinaDuplicada.push({
+            nombre: `${cliente.nombre} ${cliente.apellido}`,
+            rutina: rutinaExistente.nombre
+          });
+        }
+      }
+
+      // Si hay clientes duplicados, mostrar advertencia
+      if (clientesConRutinaDuplicada.length > 0) {
+        const mensaje = clientesConRutinaDuplicada
+          .map(c => `• ${c.nombre}`)
+          .join('\n');
+
+        Alert.alert(
+          '⚠️ Clientes con rutina duplicada',
+          `Los siguientes clientes ya tienen la rutina "${formData.nombre}":\n\n${mensaje}\n\nSe omitirán estos clientes. ¿Deseas continuar con los demás?`,
+          [
+            { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+            { 
+              text: 'Continuar', 
+              onPress: () => crearRutinasValidas(clientesConRutinaDuplicada)
+            }
+          ]
+        );
+        return;
+      }
+
+      // Si no hay duplicados, crear todas las rutinas
+      await crearRutinasValidas([]);
+
+    } catch (error) {
+      console.error('❌ Error completo:', error);
+      Alert.alert('Error', `No se pudo crear la rutina: ${error.message}`);
+      setLoading(false);
+    }
+  };
+
+  // ============================================
+  // Crear rutinas (excluyendo duplicados)
+  // ============================================
+  const crearRutinasValidas = async (clientesDuplicados) => {
+    try {
+      // Filtrar clientes que NO tienen duplicados
+      const clientesValidosIds = selectedClients.filter(clienteId => {
+        return !clientesDuplicados.some(cd => {
+          const cliente = clientsList.find(c => (c.id || c._id) === clienteId);
+          return `${cliente.nombre} ${cliente.apellido}` === cd.nombre;
+        });
       });
 
-      // Crear rutina para cada cliente seleccionado
-      for (const clienteId of selectedClients) {
+      if (clientesValidosIds.length === 0) {
+        Alert.alert('Aviso', 'Todos los clientes ya tienen esta rutina');
+        setLoading(false);
+        return;
+      }
+
+      console.log(`📄 Creando rutinas para ${clientesValidosIds.length} cliente(s)...`);
+
+      let rutinasCreadas = 0;
+
+      for (const clienteId of clientesValidosIds) {
         const result = await routines.create(clienteId, {
           ...formData,
           duracionEstimada: parseInt(formData.duracionEstimada),
           ejercicios,
         });
         console.log(`✅ Rutina creada para cliente ${clienteId}:`, result.id);
+        rutinasCreadas++;
       }
+
+      const mensajeExito = clientesDuplicados.length > 0
+        ? `✅ ${rutinasCreadas} rutina(s) creada(s)\n⚠️ ${clientesDuplicados.length} cliente(s) omitido(s) por duplicado`
+        : `✅ Rutina creada para ${rutinasCreadas} cliente(s)`;
 
       Alert.alert(
         'Éxito', 
-        `✅ Rutina creada para ${selectedClients.length} cliente(s)`, 
+        mensajeExito, 
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('❌ Error completo creando rutina:', error);
+      console.error('❌ Error creando rutinas:', error);
       Alert.alert('Error', `No se pudo crear la rutina: ${error.message}`);
     } finally {
       setLoading(false);
@@ -340,7 +424,7 @@ export default function CreateRoutineScreen({ navigation }) {
           disabled={loading}
         >
           <Text style={styles.submitButtonText}>
-            {loading ? 'Creando...' : 'Crear Rutina'}
+            {loading ? 'Validando...' : 'Crear Rutina'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -544,56 +628,241 @@ export default function CreateRoutineScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { backgroundColor: '#fff', padding: 24, paddingTop: 48, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backButton: { fontSize: 16, color: '#EF4444', marginBottom: 12 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#1F2937' },
+  header: { 
+    backgroundColor: '#1A1A1A',  // Negro O2
+    padding: 24, 
+    paddingTop: 48, 
+    borderBottomWidth: 3, 
+    borderBottomColor: '#FF6B35',  // Naranja O2
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  backButton: { 
+    fontSize: 16, 
+    color: '#FF6B35',  // Naranja O2
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  headerTitle: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#FFFFFF', 
+    marginBottom: 4 
+  },
   form: { flex: 1, padding: 16 },
   section: { marginBottom: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: { backgroundColor: '#fff', borderRadius: 12, padding: 14, fontSize: 16, borderWidth: 1, borderColor: '#E5E7EB' },
+  input: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 16, 
+    borderWidth: 2, 
+    borderColor: '#E5E7EB',
+    color: '#1A1A1A',
+  },
   textArea: { height: 80, textAlignVertical: 'top' },
-  selectButton: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+  selectButton: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    padding: 14, 
+    borderWidth: 2, 
+    borderColor: '#E5E7EB' 
+  },
   selectButtonText: { fontSize: 16, color: '#6B7280' },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
-  chipActive: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
+  chip: { 
+    paddingVertical: 8, 
+    paddingHorizontal: 14, 
+    borderRadius: 20, 
+    backgroundColor: '#F3F4F6', 
+    borderWidth: 2, 
+    borderColor: '#E5E7EB' 
+  },
+  chipActive: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    borderColor: '#E55A2B' 
+  },
   chipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  chipTextActive: { color: '#fff' },
-  addExerciseButton: { backgroundColor: '#3B82F6', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-  addExerciseButtonText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  chipTextActive: { color: '#FFFFFF' },
+  addExerciseButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    paddingHorizontal: 14, 
+    paddingVertical: 8, 
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  addExerciseButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: 'bold' },
   emptyText: { textAlign: 'center', color: '#9CA3AF', fontSize: 14, paddingVertical: 20 },
-  exerciseItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 8 },
-  exerciseNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  exerciseNumberText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  exerciseItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF', 
+    padding: 12, 
+    borderRadius: 12, 
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderWidth: 1,
+    borderColor: '#FFE5DC',
+  },
+  exerciseNumber: { 
+    width: 28, 
+    height: 28, 
+    borderRadius: 14, 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
+  exerciseNumberText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
   exerciseInfo: { flex: 1 },
-  exerciseName: { fontSize: 15, fontWeight: '600', color: '#1F2937', marginBottom: 2 },
+  exerciseName: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 2 
+  },
   exerciseDetails: { fontSize: 12, color: '#6B7280' },
   removeButton: { fontSize: 20, padding: 4 },
-  submitButton: { backgroundColor: '#10B981', padding: 16, borderRadius: 12, alignItems: 'center', marginVertical: 24 },
+  submitButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginVertical: 24,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(26, 26, 26, 0.7)', 
+    justifyContent: 'flex-end' 
+  },
+  modalContent: { 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    maxHeight: '80%',
+    borderTopWidth: 4,
+    borderTopColor: '#FF6B35',  // Naranja O2
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 20, 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#FFE5DC'  // Naranja muy claro
+  },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#1A1A1A'  // Negro O2
+  },
   modalClose: { fontSize: 28, color: '#6B7280' },
-  clientItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', alignItems: 'center' },
-  clientItemSelected: { backgroundColor: '#EEF2FF' },
-  checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#3B82F6', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
-  checkmark: { color: '#3B82F6', fontSize: 16, fontWeight: 'bold' },
-  clientName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
+  clientItem: { 
+    padding: 16, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F3F4F6', 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  clientItemSelected: { 
+    backgroundColor: '#FFF5F2'  // Naranja muy suave
+  },
+  checkbox: { 
+    width: 24, 
+    height: 24, 
+    borderRadius: 12, 
+    borderWidth: 2, 
+    borderColor: '#FF6B35',  // Naranja O2
+    marginRight: 12, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  checkmark: { 
+    color: '#FF6B35',  // Naranja O2
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
+  clientName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 4 
+  },
   clientEmail: { fontSize: 13, color: '#6B7280' },
-  groupSelectButton: { backgroundColor: '#8B5CF6', margin: 16, marginBottom: 8, padding: 14, borderRadius: 12, alignItems: 'center' },
-  groupSelectButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
-  confirmClientButton: { backgroundColor: '#10B981', margin: 16, marginTop: 8, padding: 16, borderRadius: 12, alignItems: 'center' },
-  confirmClientButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  groupSelectButton: { 
+    backgroundColor: '#2A2A2A',  // Gris oscuro
+    margin: 16, 
+    marginBottom: 8, 
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  groupSelectButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
+  confirmClientButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    margin: 16, 
+    marginTop: 8, 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  confirmClientButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
   groupItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  groupName: { fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
-  groupCount: { fontSize: 13, color: '#8B5CF6' },
+  groupName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#1A1A1A',  // Negro O2
+    marginBottom: 4 
+  },
+  groupCount: { fontSize: 13, color: '#FF6B35' },  // Naranja O2
   exerciseForm: { padding: 20 },
   row: { flexDirection: 'row', gap: 12 },
   col: { flex: 1 },
-  addButton: { backgroundColor: '#10B981', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-  addButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  addButton: { 
+    backgroundColor: '#FF6B35',  // Naranja O2
+    padding: 14, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginTop: 20,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  addButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
 });

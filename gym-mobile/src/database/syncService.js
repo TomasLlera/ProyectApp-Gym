@@ -11,7 +11,7 @@ const API_URL = 'http://192.168.0.83:3000/api';
  * Se ejecuta cuando se abre la app por primera vez
  */
 export const syncFromMongoDB = async (token) => {
-  const db = getDatabase();
+  const db = await getDatabase();
   
   try {
     console.log('\n🔄 Iniciando sincronización desde MongoDB...\n');

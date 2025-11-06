@@ -2,12 +2,12 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-// 🔴 IMPORTANTE: Esta es tu IP local
-const API_URL = 'http://192.168.0.83:3000/api';
+// � URL DE PRODUCCIÓN
+const API_URL = 'https://proyectapp-gym-production.up.railway.app/api';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 15000, // 15 segundos (más tiempo para servidor en la nube)
   headers: {
     'Content-Type': 'application/json',
   }
@@ -66,7 +66,7 @@ export const routinesAPI = {
   getAll: (params) => axiosInstance.get('/routines', { params }),
   getGrouped: () => axiosInstance.get('/routines/grouped'),
   getById: (id) => axiosInstance.get(`/routines/${id}`),
-  getClientRoutines: (clienteId) => axiosInstance.get(`/routines/cliente/${clienteId}`), // NUEVO
+  getClientRoutines: (clienteId) => axiosInstance.get(`/routines/cliente/${clienteId}`),
   create: (data) => axiosInstance.post('/routines', data),
   update: (id, data) => axiosInstance.put(`/routines/${id}`, data),
   updateGroup: (data) => axiosInstance.put('/routines/group', data),
