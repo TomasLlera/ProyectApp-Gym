@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useDatabase } from '../../context/DatabaseContext';
 import { useAppConfig } from '../../context/AppConfigContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import backupService from '../../services/backupService';
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -209,35 +210,183 @@ export default function ProfileScreen({ navigation }) {
 
   const backupData = () => {
     Alert.alert(
-      'Respaldo de Datos',
+      '💾 Respaldo de Datos',
       'Selecciona una opción:',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Exportar Datos', onPress: () => exportData() },
-        { text: 'Importar Datos', onPress: () => importData() },
+        { 
+          text: '📤 Exportar Datos', 
+          onPress: () => showExportOptions() 
+        },
+        { 
+          text: '📥 Importar Datos', 
+          onPress: () => importData() 
+        },
       ]
     );
   };
 
-  const exportData = () => {
+  // ✅ NUEVA FUNCIÓN: Mostrar opciones de exportación
+  const showExportOptions = () => {
     Alert.alert(
-      'Exportando...',
-      'Creando respaldo de todos los datos del gimnasio',
-      [{ text: 'OK', onPress: () => Alert.alert('Éxito', '✅ Datos exportados correctamente\nArchivo guardado en Descargas') }]
-    );
-  };
-
-  const importData = () => {
-    Alert.alert(
-      'Importar Datos',
-      '⚠️ Esta acción reemplazará todos los datos actuales.\n¿Estás seguro?',
+      '📤 Exportar Datos',
+      'Selecciona el formato:',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Importar', style: 'destructive', onPress: () => {
-          Alert.alert('Importando...', 'Procesando archivo de respaldo');
-        }}
+        { 
+          text: '📦 Backup Completo (JSON)', 
+          onPress: () => exportFullBackup() 
+        },
+        { 
+          text: '👥 Solo Clientes (JSON)', 
+          onPress: () => exportClientsJSON() 
+        },
+        { 
+          text: '📊 Clientes CSV (Excel)', 
+          onPress: () => exportClientsCSV() 
+        },
       ]
     );
+  };
+
+  // ✅ NUEVA FUNCIÓN: Exportar backup completo
+  const exportFullBackup = async () => {
+    try {
+      Alert.alert('📦 Exportando...', 'Creando backup completo de todos los datos');
+      
+      const result = await backupService.exportData();
+      
+      Alert.alert(
+        '✅ Backup Creado Exitosamente',
+        `📁 Archivo: ${result.fileName}\n\n` +
+        `📊 Datos exportados:\n` +
+        `• ${result.metadata.totalClientes} clientes\n` +
+        `• ${result.metadata.totalRutinas} rutinas\n` +
+        `• ${result.metadata.totalPagos} pagos\n` +
+        `• ${result.metadata.totalGrupos} grupos\n\n` +
+        `💡 Guarda este archivo en un lugar seguro (Google Drive, iCloud, etc).`
+      );
+      
+    } catch (error) {
+      console.error('Error exportando:', error);
+      Alert.alert(
+        '❌ Error al Exportar',
+        `No se pudo crear el backup:\n${error.message}\n\n` +
+        `Verifica los permisos de la app.`
+      );
+    }
+  };
+
+  // ✅ NUEVA FUNCIÓN: Exportar solo clientes JSON
+  const exportClientsJSON = async () => {
+    try {
+      Alert.alert('👥 Exportando...', 'Creando archivo JSON con lista de clientes');
+      
+      const result = await backupService.exportClientsOnly();
+      
+      Alert.alert(
+        '✅ Clientes Exportados',
+        `📁 Archivo: ${result.fileName}\n\n` +
+        `📊 ${result.metadata.totalClientes} clientes exportados\n\n` +
+        `💡 Este archivo contiene solo la información de clientes.`
+      );
+      
+    } catch (error) {
+      console.error('Error exportando clientes:', error);
+      Alert.alert('❌ Error', `No se pudo exportar:\n${error.message}`);
+    }
+  };
+
+  // ✅ NUEVA FUNCIÓN: Exportar clientes CSV
+  const exportClientsCSV = async () => {
+    try {
+      Alert.alert('📊 Exportando...', 'Creando archivo CSV para Excel/Sheets');
+      
+      const result = await backupService.exportToCSV();
+      
+      Alert.alert(
+        '✅ CSV Creado',
+        `📁 Archivo: ${result.fileName}\n\n` +
+        `📊 ${result.totalClientes} clientes exportados\n\n` +
+        `💡 Puedes abrir este archivo en:\n` +
+        `• Microsoft Excel\n` +
+        `• Google Sheets\n` +
+        `• Numbers (Mac)`
+      );
+      
+    } catch (error) {
+      console.error('Error exportando CSV:', error);
+      Alert.alert('❌ Error', `No se pudo crear CSV:\n${error.message}`);
+    }
+  };
+
+  // ✅ NUEVA FUNCIÓN: Importar datos
+  const importData = () => {
+    Alert.alert(
+      '⚠️ Importar Backup',
+      'Esta acción:\n\n' +
+      '1. Reemplazará TODOS los datos actuales\n' +
+      '2. No se puede deshacer\n' +
+      '3. Se recomienda hacer un backup antes\n\n' +
+      '¿Estás seguro de continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Hacer Backup Primero', 
+          onPress: () => exportFullBackup() 
+        },
+        {
+          text: 'Importar Ahora',
+          style: 'destructive',
+          onPress: () => performImport()
+        }
+      ]
+    );
+  };
+
+  // ✅ NUEVA FUNCIÓN: Realizar importación
+  const performImport = async () => {
+    try {
+      const result = await backupService.importData();
+      
+      if (result.success) {
+        Alert.alert(
+          '✅ Importación Completada',
+          `${result.message}\n\n` +
+          `📊 Datos importados:\n` +
+          `• ${result.metadata.totalClientes} clientes\n` +
+          `• ${result.metadata.totalRutinas} rutinas\n` +
+          `• ${result.metadata.totalPagos} pagos\n` +
+          `• ${result.metadata.totalGrupos} grupos\n\n` +
+          `🔄 Reiniciando aplicación...`,
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                // Navegar al Dashboard para forzar refresh
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' }],
+                });
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('ℹ️ Información', result.message);
+      }
+      
+    } catch (error) {
+      console.error('Error importando:', error);
+      Alert.alert(
+        '❌ Error al Importar',
+        `No se pudo importar el backup:\n${error.message}\n\n` +
+        `Verifica que:\n` +
+        `• El archivo sea un backup válido de O2 Gym\n` +
+        `• El archivo no esté corrupto\n` +
+        `• Tengas permisos de lectura`
+      );
+    }
   };
 
   const notificationSettings = () => {
