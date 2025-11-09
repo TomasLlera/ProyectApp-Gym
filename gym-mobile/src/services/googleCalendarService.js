@@ -244,6 +244,169 @@ class GoogleCalendarService {
     }
   }
 
+  /**
+   * 📅 Crear evento con cliente como invitado
+   */
+  async createEventWithAttendee(rutina, cliente) {
+    try {
+      const token = await this.getValidToken();
+
+      console.log('📅 Creando evento para:', cliente.nombre);
+
+      // Calcular fechas para los días de la rutina
+      const eventos = [];
+      
+      for (const dia of rutina.diasSemana) {
+        const fechaEvento = this.calcularProximaFecha(dia);
+        const fechaFin = new Date(fechaEvento.getTime() + rutina.duracionEstimada * 60000);
+
+        // Construir descripción
+        let descripcion = `💪 Rutina de ${cliente.nombre} ${cliente.apellido}\n\n`;
+        descripcion += `📋 Tipo: ${rutina.tipo}\n`;
+        descripcion += `🎯 Nivel: ${rutina.nivel}\n`;
+        descripcion += `⏱️ Duración: ${rutina.duracionEstimada} minutos\n\n`;
+        
+        if (rutina.descripcion) {
+          descripcion += `📝 Descripción:\n${rutina.descripcion}\n\n`;
+        }
+        
+        descripcion += `🏋️ Ejercicios:\n`;
+        rutina.ejercicios?.forEach((ej, index) => {
+          descripcion += `${index + 1}. ${ej.nombre}`;
+          if (ej.series && ej.repeticiones) {
+            descripcion += ` - ${ej.series}x${ej.repeticiones}`;
+          }
+          if (ej.peso && ej.peso !== 'A definir') {
+            descripcion += ` (${ej.peso})`;
+          }
+          descripcion += '\n';
+        });
+
+        const eventData = {
+          summary: `🏋️ ${rutina.nombre} - ${cliente.nombre}`,
+          description: descripcion,
+          
+          start: {
+            dateTime: fechaEvento.toISOString(),
+            timeZone: 'America/Argentina/Buenos_Aires',
+          },
+          end: {
+            dateTime: fechaFin.toISOString(),
+            timeZone: 'America/Argentina/Buenos_Aires',
+          },
+          
+          // ✅ AGREGAR AL CLIENTE COMO INVITADO
+          attendees: cliente.email ? [
+            { 
+              email: cliente.email,
+              displayName: `${cliente.nombre} ${cliente.apellido}`,
+              responseStatus: 'needsAction'
+            }
+          ] : [],
+          
+          // Configurar para que se repita semanalmente
+          recurrence: [
+            'RRULE:FREQ=WEEKLY;COUNT=12'  // 12 semanas
+          ],
+          
+          // Color del evento (azul para entrenamiento)
+          colorId: '9',  // Azul
+          
+          // Recordatorios
+          reminders: {
+            useDefault: false,
+            overrides: [
+              { method: 'email', minutes: 24 * 60 },  // 1 día antes
+              { method: 'popup', minutes: 60 },        // 1 hora antes
+              { method: 'popup', minutes: 30 },        // 30 min antes
+            ],
+          },
+          
+          // Configuración de invitados
+          guestsCanInviteOthers: false,
+          guestsCanModify: false,
+          guestsCanSeeOtherGuests: false,
+          
+          // Enviar notificaciones
+          sendNotifications: true,
+          sendUpdates: 'all',
+        };
+
+        const response = await fetch(
+          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(eventData),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Error: ${errorData.error?.message || 'Error desconocido'}`);
+        }
+
+        const event = await response.json();
+        eventos.push(event);
+        
+        console.log(`✅ Evento creado para ${dia}`);
+        
+        // Pequeño delay entre eventos
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      return {
+        success: true,
+        eventosCreados: eventos.length,
+        eventos
+      };
+
+    } catch (error) {
+      console.error('❌ Error creando evento:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📆 Calcular próxima fecha para un día de la semana
+   */
+  calcularProximaFecha(diaNombre) {
+    const dias = {
+      'domingo': 0,
+      'lunes': 1,
+      'martes': 2,
+      'miercoles': 3,
+      'jueves': 4,
+      'viernes': 5,
+      'sabado': 6
+    };
+
+    const hoy = new Date();
+    const diaObjetivo = dias[diaNombre.toLowerCase()];
+    const diaActual = hoy.getDay();
+    
+    let diasAdelante = diaObjetivo - diaActual;
+    if (diasAdelante <= 0) {
+      diasAdelante += 7;
+    }
+
+    const fechaEvento = new Date(hoy);
+    fechaEvento.setDate(fechaEvento.getDate() + diasAdelante);
+    fechaEvento.setHours(9, 0, 0, 0);  // 9 AM por defecto
+
+    return fechaEvento;
+  }
+
+  async getValidToken() {
+    if (!this.accessToken) {
+      throw new Error('No hay token de acceso. Debes autenticarte primero.');
+    }
+    return this.accessToken;
+  }
+
   async logout() {
     try {
       this.accessToken = null;
