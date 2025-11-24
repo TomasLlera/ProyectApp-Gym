@@ -11,6 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { useDatabase } from '../../context/DatabaseContext';
+import SelectorEjerciciosModal from '../../components/SelectorEjerciciosModal';
 
 export default function CreateTemplateScreen({ navigation }) {
   const { routines } = useDatabase();
@@ -26,6 +27,7 @@ export default function CreateTemplateScreen({ navigation }) {
 
   const [ejercicios, setEjercicios] = useState([]);
   const [showExerciseModal, setShowExerciseModal] = useState(false);
+  const [showSelectorModal, setShowSelectorModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [newExercise, setNewExercise] = useState({
@@ -68,6 +70,40 @@ export default function CreateTemplateScreen({ navigation }) {
       grupoMuscular: 'pecho',
     });
     setShowExerciseModal(false);
+  };
+
+  // Agregar esta nueva función para manejar la selección desde biblioteca:
+  const handleSelectFromBiblioteca = (ejercicioDeBiblioteca) => {
+    // Verificar si el ejercicio ya está en la plantilla
+    const yaExiste = ejercicios.some(
+      ej => ej.nombre.toLowerCase() === ejercicioDeBiblioteca.nombre.toLowerCase()
+    );
+    
+    if (yaExiste) {
+      Alert.alert(
+        'Ejercicio duplicado',
+        `"${ejercicioDeBiblioteca.nombre}" ya está agregado a esta plantilla.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    // Convertir ejercicio de biblioteca al formato de rutina
+    const ejercicioParaRutina = {
+      nombre: ejercicioDeBiblioteca.nombre,
+      series: ejercicioDeBiblioteca.seriesSugeridas?.toString() || '3',
+      repeticiones: ejercicioDeBiblioteca.repeticionesSugeridas || '10-12',
+      peso: 'A definir',
+      descanso: ejercicioDeBiblioteca.descansoSugerido || '60 seg',
+      grupoMuscular: ejercicioDeBiblioteca.grupoMuscular || 'pecho',
+      orden: ejercicios.length
+    };
+    
+    setEjercicios([
+      ...ejercicios,
+      ejercicioParaRutina
+    ]);
+    setShowSelectorModal(false);
   };
 
   const removeExercise = (index) => {
@@ -235,12 +271,20 @@ export default function CreateTemplateScreen({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.label}>Ejercicios ({ejercicios.length})</Text>
-            <TouchableOpacity
-              style={styles.addExerciseButton}
-              onPress={() => setShowExerciseModal(true)}
-            >
-              <Text style={styles.addExerciseButtonText}>+ Agregar</Text>
-            </TouchableOpacity>
+            <View style={styles.addButtonsContainer}>
+              <TouchableOpacity
+                style={styles.addFromLibraryButton}
+                onPress={() => setShowSelectorModal(true)}
+              >
+                <Text style={styles.addFromLibraryButtonText}>📚 Biblioteca</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addExerciseButton}
+                onPress={() => setShowExerciseModal(true)}
+              >
+                <Text style={styles.addExerciseButtonText}>+ Manual</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {ejercicios.length === 0 ? (
@@ -366,6 +410,13 @@ export default function CreateTemplateScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Selector de Biblioteca Modal */}
+      <SelectorEjerciciosModal
+        visible={showSelectorModal}
+        onClose={() => setShowSelectorModal(false)}
+        onSelectEjercicio={handleSelectFromBiblioteca}
+      />
     </View>
   );
 }
@@ -426,6 +477,28 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
   chipTextActive: { color: '#FFFFFF' },
+  addButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  addFromLibraryButton: { 
+    backgroundColor: '#8B5CF6',  // Violeta para biblioteca
+    paddingHorizontal: 12, 
+    paddingVertical: 8, 
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#6D28D9',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addFromLibraryButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 12, 
+    fontWeight: 'bold' 
+  },
   addExerciseButton: { 
     backgroundColor: '#FF6B35',  // Naranja O2
     paddingHorizontal: 14, 

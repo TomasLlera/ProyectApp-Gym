@@ -6,48 +6,27 @@ import { authAPI } from '../api/axios';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Usuario por defecto - sin necesidad de login
+  const [user, setUser] = useState({ 
+    id: 'default-user',
+    email: 'admin@o2gym.com',
+    name: 'Administrador'
+  });
+  const [loading, setLoading] = useState(false);
 
+  // Ya no necesitamos verificar token ni login
   useEffect(() => {
-    verifyToken();
+    setLoading(false);
   }, []);
 
-  const verifyToken = async () => {
-    const token = await SecureStore.getItemAsync('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data } = await authAPI.verify();
-      setUser(data.user);
-    } catch (error) {
-      await SecureStore.deleteItemAsync('token');
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const login = async (email, password) => {
-    try {
-      const { data } = await authAPI.login({ email, password });
-      await SecureStore.setItemAsync('token', data.token);
-      setUser(data.user);
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Error al iniciar sesión'
-      };
-    }
+    // Función mantenida por compatibilidad pero no hace nada
+    return { success: true };
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('token');
-    setUser(null);
+    // Función mantenida por compatibilidad pero no hace nada
+    // El usuario siempre estará autenticado
   };
 
   return (

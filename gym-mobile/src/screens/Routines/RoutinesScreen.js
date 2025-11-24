@@ -103,46 +103,49 @@ export default function RoutinesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🏋️ Rutinas</Text>
-        
-        <View style={styles.headerActions}>
+      {/* Navigation Tabs */}
+      <View style={styles.navContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.navScrollContent}
+        >
           <TouchableOpacity
-            style={styles.templateButton}
-            onPress={() => navigation.navigate('CreateTemplate')}
+            style={[styles.navChip, viewMode === 'groups' && styles.navChipActive]}
+            onPress={() => setViewMode('groups')}
           >
-            <Text style={styles.templateButtonIcon}>✨</Text>
-            <Text style={styles.templateButtonText}>Nueva Plantilla</Text>
+            <Text style={[styles.navText, viewMode === 'groups' && styles.navTextActive]}>
+              👥 Por Grupos
+            </Text>
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.viewTemplatesButton}
+            style={[styles.navChip, viewMode === 'individual' && styles.navChipActive]}
+            onPress={() => setViewMode('individual')}
+          >
+            <Text style={[styles.navText, viewMode === 'individual' && styles.navTextActive]}>
+              📋 Individual
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.navChip]}
             onPress={() => navigation.navigate('RoutineTemplates')}
           >
-            <Text style={styles.viewTemplatesButtonIcon}>📚</Text>
-            <Text style={styles.viewTemplatesButtonText}>Ver Plantillas</Text>
+            <Text style={styles.navText}>
+              📚 Plantillas
+            </Text>
           </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* View Mode Toggle */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[styles.toggleButton, viewMode === 'groups' && styles.toggleButtonActive]}
-          onPress={() => setViewMode('groups')}
-        >
-          <Text style={[styles.toggleText, viewMode === 'groups' && styles.toggleTextActive]}>
-            👥 Por Grupos
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, viewMode === 'individual' && styles.toggleButtonActive]}
-          onPress={() => setViewMode('individual')}
-        >
-          <Text style={[styles.toggleText, viewMode === 'individual' && styles.toggleTextActive]}>
-            📋 Individual
-          </Text>
-        </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.navChip]}
+            onPress={() => navigation.navigate('BibliotecaEjercicios')}
+          >
+            <Text style={styles.navText}>
+              💪 Ejercicios
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -377,13 +380,51 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',  // Blanco
     marginBottom: 16 
   },
-  headerActions: { flexDirection: 'row', gap: 12 },
+  // Navigation Tabs
+  navContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  navScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  navChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  navChipActive: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#E55A2B',
+  },
+  navText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  navTextActive: {
+    color: '#FFFFFF',
+  },
   
-  // Botones del header rediseñados
-  templateButton: {
+  // Action Buttons
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#FF6B35',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
@@ -393,52 +434,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     borderWidth: 2,
-    borderColor: '#E55A2B',  // Naranja oscuro
-  },
-  templateButtonIcon: { fontSize: 16, marginRight: 8 },
-  templateButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  
-  viewTemplatesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2A2A2A',  // Gris oscuro
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 2,
-    borderColor: '#FF6B35',  // Borde naranja
-  },
-  viewTemplatesButtonIcon: { fontSize: 16, marginRight: 8 },
-  viewTemplatesButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  
-  // Toggle buttons
-  toggleContainer: { 
-    flexDirection: 'row', 
-    padding: 16, 
-    paddingBottom: 8, 
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  toggleButton: { 
-    flex: 1, 
-    padding: 14, 
-    borderRadius: 12, 
-    backgroundColor: '#F3F4F6', 
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  toggleButtonActive: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
     borderColor: '#E55A2B',
+    flex: 1,
+    justifyContent: 'center',
   },
-  toggleText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
-  toggleTextActive: { color: '#FFFFFF' },
+  actionButtonIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  
   
   list: { flex: 1, paddingHorizontal: 16 },
   

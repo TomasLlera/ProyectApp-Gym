@@ -186,6 +186,42 @@ const createTables = async () => {
       );
     `);
 
+    // Tabla de Biblioteca de Ejercicios (ejercicios predefinidos)
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS biblioteca_ejercicios (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        grupoMuscular TEXT NOT NULL,
+        equipamiento TEXT,
+        dificultad TEXT DEFAULT 'intermedio',
+        videoUrl TEXT,
+        imagenUrl TEXT,
+        instrucciones TEXT,
+        seriesSugeridas INTEGER DEFAULT 3,
+        repeticionesSugeridas TEXT DEFAULT '10-12',
+        descansoSugerido TEXT DEFAULT '60 seg',
+        notas TEXT,
+        favorito INTEGER DEFAULT 0,
+        usosCount INTEGER DEFAULT 0,
+        activo INTEGER DEFAULT 1,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Índices para búsqueda rápida
+    await db.execAsync(`
+      CREATE INDEX IF NOT EXISTS idx_biblioteca_grupo 
+      ON biblioteca_ejercicios(grupoMuscular) WHERE activo = 1;
+    `);
+
+    await db.execAsync(`
+      CREATE INDEX IF NOT EXISTS idx_biblioteca_favoritos 
+      ON biblioteca_ejercicios(favorito) WHERE activo = 1 AND favorito = 1;
+    `);
+
+    console.log('✅ Tabla biblioteca_ejercicios creada');
     console.log('✅ Todas las tablas creadas');
     
     // Ejecutar migraciones

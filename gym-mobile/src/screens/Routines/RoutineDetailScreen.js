@@ -11,35 +11,6 @@ import {
   Linking,
 } from 'react-native';
 import { useDatabase } from '../../context/DatabaseContext';
-import googleCalendarService from '../../services/googleCalendarService';
-import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
-
-// Importar la instancia configurada de axios
-const axiosInstance = axios.create({
-  baseURL: 'http://192.168.0.83:3000/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-});
-
-// Interceptor para agregar token automáticamente
-axiosInstance.interceptors.request.use(
-  async (config) => {
-    const token = await SecureStore.getItemAsync('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔐 Token agregado a la petición de rutina');
-    } else {
-      console.log('❌ No hay token disponible para rutina');
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 export default function RoutineDetailScreen({ route, navigation }) {
   const { routineId } = route.params;
@@ -47,7 +18,6 @@ export default function RoutineDetailScreen({ route, navigation }) {
   
   const [routine, setRoutine] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [uploadingCalendar, setUploadingCalendar] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -68,141 +38,98 @@ export default function RoutineDetailScreen({ route, navigation }) {
     }
   };
 
-  const subirACalendar = async () => {
-    try {
-      console.log('🔄 Iniciando proceso para Google Calendar...');
-      
-      // Validar datos de la rutina
-      if (!routine.diasSemana || routine.diasSemana.length === 0) {
-        Alert.alert(
-          'Error',
-          'La rutina debe tener al menos un día asignado para poder subirla a Google Calendar'
-        );
-        return;
-      }
-
-      if (!routine.cliente) {
-        Alert.alert('Error', 'Falta información del cliente');
-        return;
-      }
-
-      // Confirmar subida
-      Alert.alert(
-        'Subir a Google Calendar',
-        `¿Subir la rutina "${routine.nombre}" a Google Calendar?\n\nSe crearán eventos para: ${routine.diasSemana.join(', ')}`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Subir',
-            onPress: async () => {
-              setUploadingCalendar(true);
-              try {
-                console.log('📤 Subiendo rutina a Google Calendar...');
-                
-                const response = await axiosInstance.post('/calendar/subir-rutina-completa', {
-                  nombre: routine.nombre,
-                  descripcion: routine.descripcion,
-                  tipo: routine.tipo,
-                  nivel: routine.nivel,
-                  duracionEstimada: routine.duracionEstimada,
-                  diasSemana: routine.diasSemana,
-                  ejercicios: routine.ejercicios,
-                  cliente: {
-                    nombre: routine.cliente.nombre,
-                    apellido: routine.cliente.apellido,
-                    email: routine.cliente.email,     // ⬅️ IMPORTANTE
-                    telefono: routine.cliente.telefono
-                  }
-                });
-                
-                console.log('📬 Notificaciones enviadas:', response.data.notificaciones);
-                // { email: 'Enviado', whatsapp: 'Enviado' }
-                
-                let successMessage = response.data.message;
-                
-                // Agregar información de notificaciones si está disponible
-                if (response.data.notificaciones) {
-                  const notifs = response.data.notificaciones;
-                  successMessage += '\n\n📬 Notificaciones:';
-                  if (notifs.email) {
-                    successMessage += `\n📧 Email: ${notifs.email}`;
-                  }
-                  if (notifs.whatsapp) {
-                    successMessage += `\n💬 WhatsApp: ${notifs.whatsapp}`;
-                  }
-                }
-                
-                Alert.alert('✅ Éxito', successMessage);
-                
-              } catch (error) {
-                console.error('❌ Error:', error);
-                console.error('❌ Error response:', error.response?.data);
-                
-                let errorMessage = 'No se pudo subir la rutina a Google Calendar';
-                
-                if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-                  errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en 192.168.0.83:3000';
-                } else if (error.response?.status === 500) {
-                  errorMessage = `Error del servidor: ${error.response?.data?.error || 'Error interno del servidor'}`;
-                } else if (error.response?.data?.error) {
-                  errorMessage = error.response.data.error;
-                }
-                
-                Alert.alert('Error', errorMessage);
-              } finally {
-                setUploadingCalendar(false);
-              }
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('❌ Error general:', error);
-      Alert.alert('Error', `Error inesperado: ${error.message}`);
-    }
-  };
-
+  // ============================================
+  // 📱 FUNCIÓN MEJORADA PARA COMPARTIR POR WHATSAPP
+  // ============================================
   const shareRoutine = () => {
     if (!routine) return;
 
+    // Crear mensaje formateado con markdown de WhatsApp
     let message = `🏋️ *${routine.nombre}*\n\n`;
     message += `📋 Tipo: ${routine.tipo}\n`;
     message += `🎯 Nivel: ${routine.nivel}\n`;
     message += `⏱️ Duración: ${routine.duracionEstimada} min\n\n`;
-    message += `*Ejercicios:*\n`;
+    
+    if (routine.descripcion) {
+      message += `📝 Descripción:\n${routine.descripcion}\n\n`;
+    }
+    
+    message += `💪 *Ejercicios (${routine.ejercicios?.length || 0}):*\n\n`;
     
     routine.ejercicios?.forEach((ej, index) => {
-      message += `${index + 1}. ${ej.nombre} - ${ej.series}x${ej.repeticiones}\n`;
-    });
-
-    let phone = routine.cliente?.telefono;
-    if (phone) {
-      // Limpiar el teléfono de caracteres no numéricos excepto +
-      phone = phone.replace(/[^0-9+]/g, '');
+      message += `${index + 1}. *${ej.nombre}*\n`;
+      message += `   ${ej.series}x${ej.repeticiones}`;
       
-      // Si ya empieza con +54, usar tal como está (no agregar nada más)
-      if (phone.startsWith('+54')) {
-        // Ya tiene el formato correcto
-      } else if (phone.startsWith('54')) {
-        phone = '+' + phone;
-      } else {
-        // Si no tiene código de país, agregar +54
-        phone = '+54' + phone;
+      if (ej.peso && ej.peso !== 'A definir') {
+        message += ` - ${ej.peso}`;
       }
       
-      // Para WhatsApp, remover el + pero mantener el código de país
-      const whatsappNumber = phone.replace('+', '');
+      message += `\n   Descanso: ${ej.descanso}\n`;
       
-      // Mostrar confirmación con el número antes de enviar
+      if (ej.grupoMuscular) {
+        message += `   🎯 ${ej.grupoMuscular}\n`;
+      }
+      
+      if (ej.notas) {
+        message += `   💡 ${ej.notas}\n`;
+      }
+      
+      message += `\n`;
+    });
+    
+    message += `\n📍 O2 Gym\n`;
+    message += `💪 ¡Vamos por esos objetivos!`;
+
+    const phone = routine.cliente?.telefono;
+    
+    if (phone) {
+      // Limpiar el teléfono
+      let cleanPhone = phone.replace(/[^0-9+]/g, '');
+      
+      if (cleanPhone.startsWith('+54')) {
+        // Ya tiene el formato correcto
+      } else if (cleanPhone.startsWith('54')) {
+        cleanPhone = '+' + cleanPhone;
+      } else {
+        cleanPhone = '+54' + cleanPhone.replace(/^0/, '');
+      }
+      
+      const whatsappNumber = cleanPhone.replace('+', '');
+      
       Alert.alert(
-        'Confirmar envío por WhatsApp',
-        `¿Enviar rutina a:\n\n📱 ${phone}\n\nCliente: ${routine.cliente?.nombre} ${routine.cliente?.apellido}`,
+        '📱 Compartir por WhatsApp',
+        `¿Enviar rutina a:\n\n` +
+        `📞 ${cleanPhone}\n` +
+        `👤 ${routine.cliente?.nombre} ${routine.cliente?.apellido}\n\n` +
+        `Se abrirá WhatsApp con el mensaje preparado.`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
-            text: 'Enviar',
+            text: '📤 Vista Previa',
             onPress: () => {
-              Linking.openURL(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`);
+              Alert.alert(
+                'Vista Previa',
+                message,
+                [
+                  { text: 'Volver', style: 'cancel' },
+                  {
+                    text: '✅ Enviar',
+                    onPress: () => {
+                      Linking.openURL(
+                        `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+                      );
+                    }
+                  }
+                ]
+              );
+            }
+          },
+          {
+            text: '✅ Enviar Ahora',
+            onPress: () => {
+              Linking.openURL(
+                `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+              );
             }
           }
         ]
@@ -240,20 +167,10 @@ export default function RoutineDetailScreen({ route, navigation }) {
 
       <View style={styles.actions}>
         <TouchableOpacity 
-          style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
+          style={[styles.actionBtn, { backgroundColor: '#25D366' }]}
           onPress={shareRoutine}
         >
-          <Text style={styles.actionBtnText}>💬 Compartir</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionBtn, { backgroundColor: '#8B5CF6', marginTop: 12 }]}
-          onPress={subirACalendar}
-          disabled={uploadingCalendar}
-        >
-          <Text style={styles.actionBtnText}>
-            {uploadingCalendar ? '⏳ Subiendo...' : '📅 Google Calendar'}
-          </Text>
+          <Text style={styles.actionBtnText}>💬 Compartir WhatsApp</Text>
         </TouchableOpacity>
       </View>
 
@@ -343,7 +260,7 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#FF6B35'  // Naranja O2 para personalizado
+    personalizado: '#FF6B35'
   };
   return colors[tipo] || colors.personalizado;
 }
@@ -371,10 +288,10 @@ const styles = StyleSheet.create({
   },
   loadingText: { fontSize: 16, color: '#6B7280' },
   header: { 
-    backgroundColor: '#1A1A1A',  // Negro O2
+    backgroundColor: '#1A1A1A',
     padding: 24, 
     borderBottomWidth: 3, 
-    borderBottomColor: '#FF6B35',  // Naranja O2
+    borderBottomColor: '#FF6B35',
     shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
@@ -389,7 +306,7 @@ const styles = StyleSheet.create({
   },
   subtitle: { 
     fontSize: 16, 
-    color: '#FF8456',  // Naranja claro
+    color: '#FF8456',
     marginBottom: 16 
   },
   badges: { flexDirection: 'row', gap: 8 },
@@ -417,6 +334,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 5,
     borderWidth: 2,
+    borderColor: '#128C7E',
   },
   actionBtnText: { 
     color: '#FFFFFF', 
@@ -430,7 +348,7 @@ const styles = StyleSheet.create({
     padding: 16, 
     borderRadius: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderLeftColor: '#FF6B35',
     borderWidth: 1,
     borderColor: '#FFE5DC',
     shadowColor: '#FF6B35',
@@ -442,7 +360,7 @@ const styles = StyleSheet.create({
   sectionTitle: { 
     fontSize: 18, 
     fontWeight: 'bold', 
-    color: '#1A1A1A',  // Negro O2
+    color: '#1A1A1A',
     marginBottom: 16 
   },
   infoRow: { marginBottom: 16 },
@@ -453,7 +371,7 @@ const styles = StyleSheet.create({
   },
   infoValue: { 
     fontSize: 16, 
-    color: '#1A1A1A',  // Negro O2
+    color: '#1A1A1A',
     fontWeight: '600' 
   },
   daysContainer: { 
@@ -463,7 +381,7 @@ const styles = StyleSheet.create({
     marginTop: 8 
   },
   dayChip: { 
-    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    backgroundColor: '#FFE5DC',
     paddingHorizontal: 12, 
     paddingVertical: 6, 
     borderRadius: 12,
@@ -471,7 +389,7 @@ const styles = StyleSheet.create({
     borderColor: '#FF6B35',
   },
   dayChipText: { 
-    color: '#E55A2B',  // Naranja oscuro
+    color: '#E55A2B',
     fontSize: 11, 
     fontWeight: 'bold' 
   },
@@ -482,13 +400,13 @@ const styles = StyleSheet.create({
     padding: 12, 
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderLeftColor: '#FF6B35',
   },
   exerciseNumber: { 
     width: 32, 
     height: 32, 
     borderRadius: 16, 
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#FF6B35',
     justifyContent: 'center', 
     alignItems: 'center', 
     marginRight: 12,
@@ -504,7 +422,7 @@ const styles = StyleSheet.create({
   exerciseName: { 
     fontSize: 16, 
     fontWeight: 'bold', 
-    color: '#1A1A1A',  // Negro O2
+    color: '#1A1A1A',
     marginBottom: 4 
   },
   exerciseDescription: { 
@@ -526,7 +444,7 @@ const styles = StyleSheet.create({
   detailValue: { 
     fontSize: 14, 
     fontWeight: 'bold', 
-    color: '#1A1A1A'  // Negro O2
+    color: '#1A1A1A'
   },
   grupoMuscular: { 
     alignSelf: 'flex-start', 

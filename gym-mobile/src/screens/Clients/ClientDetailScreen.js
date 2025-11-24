@@ -20,13 +20,13 @@ import { useDatabase } from '../../context/DatabaseContext';
 export default function ClientDetailScreen({ route, navigation }) {
   const { clientId } = route.params;
   console.log('ClientDetail recibió clientId:', clientId);  // DEBUG
-  
+
   const [client, setClient] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [uploadingCalendar, setUploadingCalendar] = useState(false);
-  
+
   // AGREGAR ESTO
   const { clients } = useDatabase();
 
@@ -41,7 +41,7 @@ export default function ClientDetailScreen({ route, navigation }) {
     try {
       // Primero intentar desde SQLite
       const clientData = await clients.getById(clientId);
-      
+
       if (clientData) {
         setClient(clientData);
         console.log('✅ Cliente cargado desde SQLite');
@@ -129,7 +129,7 @@ export default function ClientDetailScreen({ route, navigation }) {
       // Actualizar en SQLite
       await clients.updatePaymentStatus(clientId, status);
       Alert.alert('Éxito', 'Estado actualizado');
-      
+
       // Recargar datos
       setTimeout(() => loadClientData(), 300);
     } catch (error) {
@@ -152,7 +152,7 @@ export default function ClientDetailScreen({ route, navigation }) {
             setUploadingCalendar(true);
             try {
               const response = await calendarAPI.subirTodas(clientId);
-              
+
               Alert.alert(
                 '✅ Éxito',
                 `${response.data.data.totalEventos} eventos creados en Google Calendar\n\n${response.data.data.detalles
@@ -207,7 +207,7 @@ export default function ClientDetailScreen({ route, navigation }) {
     <ScrollView style={styles.container}>
       {/* Client Header */}
       <View style={styles.header}>
-        <View style={[styles.avatar, { 
+        <View style={[styles.avatar, {
           borderColor: getStatusColor(client.estadoPago),
           borderWidth: 3
         }]}>
@@ -217,7 +217,7 @@ export default function ClientDetailScreen({ route, navigation }) {
         <Text style={styles.clientEmail}>{client.email}</Text>
 
         <TouchableOpacity
-          style={[styles.statusBadge, { 
+          style={[styles.statusBadge, {
             backgroundColor: getStatusColor(client.estadoPago),
             borderWidth: 2,
             borderColor: getStatusColor(client.estadoPago) + '80',
@@ -236,19 +236,19 @@ export default function ClientDetailScreen({ route, navigation }) {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={[styles.actionButton, { 
+        <TouchableOpacity
+          style={[styles.actionButton, {
             backgroundColor: '#3B82F6',
             borderWidth: 2,
             borderColor: '#1E40AF'
-          }]} 
+          }]}
           onPress={() => setShowEditModal(true)}
         >
           <Text style={styles.actionButtonText}>✏️ Editar</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.actionButton, { 
+        <TouchableOpacity
+          style={[styles.actionButton, {
             backgroundColor: '#8B5CF6',
             borderWidth: 2,
             borderColor: '#6D28D9'
@@ -261,34 +261,34 @@ export default function ClientDetailScreen({ route, navigation }) {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.actionButton, { 
+        <TouchableOpacity
+          style={[styles.actionButton, {
             backgroundColor: '#F97316',
             borderWidth: 2,
             borderColor: '#C2410C'
-          }]} 
+          }]}
           onPress={sendEmail}
         >
           <Text style={styles.actionButtonText}>📧 Email</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.actionButton, { 
+        <TouchableOpacity
+          style={[styles.actionButton, {
             backgroundColor: '#10B981',
             borderWidth: 2,
             borderColor: '#047857'
-          }]} 
+          }]}
           onPress={sendWhatsApp}
         >
           <Text style={styles.actionButtonText}>💬 WhatsApp</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.actionButton, { 
+        <TouchableOpacity
+          style={[styles.actionButton, {
             backgroundColor: '#EF4444',
             borderWidth: 2,
             borderColor: '#B91C1C'
-          }]} 
+          }]}
           onPress={deleteClient}
         >
           <Text style={styles.actionButtonText}>🗑️ Eliminar</Text>
@@ -347,10 +347,10 @@ export default function ClientDetailScreen({ route, navigation }) {
         visible={showEditModal}
         client={client}
         onClose={() => setShowEditModal(false)}
-        onSuccess={() => { 
-          setShowEditModal(false); 
+        onSuccess={() => {
+          setShowEditModal(false);
           // 🔥 Recargar datos automáticamente después de editar
-          loadClientData(); 
+          loadClientData();
         }}
       />
     </ScrollView>
@@ -408,7 +408,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
         ...formData,
         montoMensual: parseFloat(formData.montoMensual)
       });
-      
+
       Alert.alert('Éxito', '✅ Cliente actualizado exitosamente');
       onSuccess();
     } catch (error) {
@@ -430,34 +430,116 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.formContainer}>
-            <TextInput style={styles.input} placeholder="Nombre *" value={formData.nombre} onChangeText={(text) => setFormData({ ...formData, nombre: text })} />
-            <TextInput style={styles.input} placeholder="Apellido *" value={formData.apellido} onChangeText={(text) => setFormData({ ...formData, apellido: text })} />
-            <TextInput style={styles.input} placeholder="Email *" value={formData.email} onChangeText={(text) => setFormData({ ...formData, email: text })} keyboardType="email-address" autoCapitalize="none" />
-            <TextInput style={styles.input} placeholder="DNI *" value={formData.documento} onChangeText={(text) => setFormData({ ...formData, documento: text })} keyboardType="numeric" />
-            
-            <View style={styles.planSelector}>
-              <Text style={styles.planLabel}>Tipo de Plan *</Text>
-              <View style={styles.planOptions}>
-                {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
-                  <TouchableOpacity
-                    key={plan}
-                    style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
-                    onPress={() => setFormData({ ...formData, tipoPlan: plan })}
-                  >
-                    <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
-                      {plan.charAt(0).toUpperCase() + plan.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+          <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+            {/* Información Personal */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Información Personal</Text>
+              
+              <TextInput 
+                style={styles.input} 
+                placeholder="Nombre *" 
+                value={formData.nombre} 
+                onChangeText={(text) => setFormData({ ...formData, nombre: text })} 
+                placeholderTextColor="#9CA3AF"
+              />
+              
+              <TextInput 
+                style={styles.input} 
+                placeholder="Apellido *" 
+                value={formData.apellido} 
+                onChangeText={(text) => setFormData({ ...formData, apellido: text })} 
+                placeholderTextColor="#9CA3AF"
+              />
+              
+              <TextInput 
+                style={styles.input} 
+                placeholder="DNI * (8 dígitos)" 
+                value={formData.documento} 
+                onChangeText={(text) => {
+                  const numbersOnly = text.replace(/[^0-9]/g, '');
+                  if (numbersOnly.length <= 8) {
+                    setFormData({ ...formData, documento: numbersOnly });
+                  }
+                }} 
+                keyboardType="numeric"
+                maxLength={8}
+                placeholderTextColor="#9CA3AF"
+              />
+              
+              <TextInput 
+                style={styles.input} 
+                placeholder="Email *" 
+                value={formData.email} 
+                onChangeText={(text) => setFormData({ ...formData, email: text })} 
+                keyboardType="email-address" 
+                autoCapitalize="none"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Información de Contacto */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Contacto</Text>
+              
+              <View style={styles.phoneContainer}>
+                <Text style={styles.phonePrefix}>+54</Text>
+                <TextInput
+                  style={[styles.input, styles.phoneInput]}
+                  placeholder="Número de celular (ej: 1123456789)"
+                  value={formData.telefono.replace('+54', '')}
+                  onChangeText={(text) => {
+                    const numbersOnly = text.replace(/[^0-9]/g, '');
+                    setFormData({ ...formData, telefono: numbersOnly ? '+54' + numbersOnly : '' });
+                  }}
+                  keyboardType="phone-pad"
+                  maxLength={15}
+                  placeholderTextColor="#9CA3AF"
+                />
               </View>
             </View>
 
-            <TextInput style={styles.input} placeholder="Teléfono" value={formData.telefono} onChangeText={(text) => setFormData({ ...formData, telefono: text })} keyboardType="phone-pad" />
-            <TextInput style={styles.input} placeholder="Cuota *" value={formData.montoMensual} onChangeText={(text) => setFormData({ ...formData, montoMensual: text })} keyboardType="numeric" />
+            {/* Información del Plan */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Plan y Cuota</Text>
+              
+              <View style={styles.planSelector}>
+                <Text style={styles.planLabel}>Tipo de Plan *</Text>
+                <View style={styles.planOptions}>
+                  {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
+                    <TouchableOpacity
+                      key={plan}
+                      style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
+                      onPress={() => setFormData({ ...formData, tipoPlan: plan })}
+                    >
+                      <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
+                        {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
 
-            <TouchableOpacity style={[styles.submitButton, loading && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={loading}>
-              <Text style={styles.submitButtonText}>{loading ? 'Guardando...' : 'Guardar Cambios'}</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="Cuota Mensual *" 
+                value={formData.montoMensual} 
+                onChangeText={(text) => {
+                  const numbersOnly = text.replace(/[^0-9]/g, '');
+                  setFormData({ ...formData, montoMensual: numbersOnly });
+                }} 
+                keyboardType="numeric"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
+              onPress={handleSubmit} 
+              disabled={loading}
+            >
+              <Text style={styles.submitButtonText}>
+                {loading ? 'Guardando...' : '✅ Guardar Cambios'}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -470,11 +552,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { fontSize: 16, color: '#6B7280' },
-  header: { 
+  header: {
     backgroundColor: '#1A1A1A',  // Negro O2
-    padding: 24, 
-    alignItems: 'center', 
-    borderBottomWidth: 3, 
+    padding: 24,
+    alignItems: 'center',
+    borderBottomWidth: 3,
     borderBottomColor: '#FF6B35',  // Naranja O2
     shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 4 },
@@ -482,13 +564,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  avatar: { 
-    width: 80, 
-    height: 80, 
-    borderRadius: 40, 
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#FF6B35',  // Naranja O2
-    justifyContent: 'center', 
-    alignItems: 'center', 
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
     borderWidth: 3,
     borderColor: '#E55A2B',
@@ -501,24 +583,24 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 32, color: '#FFFFFF', fontWeight: 'bold' },
   clientName: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8 },
   clientEmail: { fontSize: 14, color: '#FF8456', marginBottom: 12 },  // Naranja claro
-  statusBadge: { 
-    paddingHorizontal: 16, 
-    paddingVertical: 8, 
-    borderRadius: 20 
+  statusBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20
   },
   statusText: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
   statusHint: { color: '#fff', fontSize: 10, opacity: 0.8, textAlign: 'center', marginTop: 2 },
-  actionButtons: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    padding: 16, 
-    gap: 8 
+  actionButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    gap: 8
   },
-  actionButton: { 
-    flex: 1, 
-    minWidth: '45%', 
-    padding: 12, 
-    borderRadius: 12, 
+  actionButton: {
+    flex: 1,
+    minWidth: '45%',
+    padding: 12,
+    borderRadius: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -527,10 +609,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   actionButtonText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  section: { 
-    backgroundColor: '#fff', 
-    margin: 16, 
-    padding: 16, 
+  section: {
+    backgroundColor: '#fff',
+    margin: 16,
+    padding: 16,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -541,12 +623,12 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
   },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 16 },  // Negro O2
-  infoRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingVertical: 12, 
-    borderBottomWidth: 1, 
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
     paddingHorizontal: 4,
   },
@@ -574,15 +656,89 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
   modalClose: { fontSize: 28, color: '#6B7280' },
   formContainer: { padding: 20 },
-  input: { backgroundColor: '#F3F4F6', borderRadius: 12, padding: 16, fontSize: 16, marginBottom: 12, color: '#1F2937' },
+  sectionContainer: {
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  input: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 12, 
+    padding: 16, 
+    fontSize: 16, 
+    marginBottom: 16, 
+    color: '#000000', 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  phonePrefix: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginRight: 8,
+    minWidth: 60,
+    textAlign: 'center',
+  },
+  phoneInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
   planSelector: { marginBottom: 16 },
   planLabel: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 12 },
   planOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  planChip: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: '#F3F4F6', borderWidth: 2, borderColor: '#F3F4F6' },
-  planChipActive: { backgroundColor: '#EEF2FF', borderColor: '#4F46E5' },
+  planChip: { 
+    paddingVertical: 10, 
+    paddingHorizontal: 14, 
+    borderRadius: 12, 
+    backgroundColor: '#F3F4F6', 
+    borderWidth: 2, 
+    borderColor: '#F3F4F6' 
+  },
+  planChipActive: { 
+    backgroundColor: '#FFF3ED', 
+    borderColor: '#FF6B35' 
+  },
   planChipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  planChipTextActive: { color: '#4F46E5' },
-  submitButton: { backgroundColor: '#3B82F6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8, marginBottom: 30 },
+  planChipTextActive: { color: '#FF6B35', fontWeight: '700' },
+  submitButton: { 
+    backgroundColor: '#FF6B35', 
+    borderRadius: 12, 
+    padding: 16, 
+    alignItems: 'center', 
+    marginTop: 8, 
+    marginBottom: 30,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+  },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

@@ -6,12 +6,14 @@ import { View, ActivityIndicator, Text, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as Linking from 'expo-linking';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DatabaseProvider } from './src/context/DatabaseContext';
 import { AppConfigProvider } from './src/context/AppConfigContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { initDatabase } from './src/database/db';
 import { syncFromMongoDB, shouldSync } from './src/database/syncService';
+import googleCalendarService from './src/googleCalendar/googleCalendarService';
 
 // Prevenir que se oculte automáticamente
 SplashScreen.preventAutoHideAsync();
@@ -50,6 +52,10 @@ function RootApp() {
         await initDatabase();
         console.log('✅ Base de datos SQLite inicializada');
 
+        // Inicializar Google Calendar Service
+        await googleCalendarService.initialize();
+        console.log('✅ Google Calendar Service inicializado');
+
         if (user) {
           await performSync();
         }
@@ -66,6 +72,34 @@ function RootApp() {
 
     prepare();
   }, [user]);
+
+  // ✅ Deep Link Handler para Google OAuth
+  useEffect(() => {
+    const handleDeepLink = (event) => {
+      const url = event.url;
+      console.log('🔗 Deep link recibido:', url);
+      
+      // Aquí podrías manejar el redirect si es necesario
+      if (url.includes('auth.expo.io')) {
+        console.log('✅ Autenticación completada vía deep link');
+      }
+    };
+
+    // Escuchar deep links
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Verificar si la app se abrió con un deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('🔗 URL inicial:', url);
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (appIsReady) {

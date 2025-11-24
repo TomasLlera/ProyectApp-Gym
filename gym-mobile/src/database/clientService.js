@@ -144,7 +144,12 @@ const validateClientData = async (clientData, isUpdate = false, clientId = null)
   }
   
   // Validar unicidad de email
-  if (clientData.email) {
+  if (clientData.email && !clientData.email.includes('@temp.com')) {
+    if (!validateEmailFormat(clientData.email)) {
+      errors.push('Formato de email inválido');
+    }
+    
+    // Solo validar unicidad si NO es temporal
     const emailUnique = await validateUniqueEmail(
       clientData.email,
       isUpdate ? clientId : null

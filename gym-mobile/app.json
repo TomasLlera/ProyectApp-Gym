@@ -2,6 +2,7 @@
   "expo": {
     "name": "O2 Gym",
     "slug": "gym-mobile",
+    "owner": "tomasqwe",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -36,7 +37,26 @@
       },
       "permissions": [
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
+        "READ_CONTACTS"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "com.gymapp.mobile",
+              "host": "oauth2redirect"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "androidNavigationBar": {
@@ -54,7 +74,14 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Permite a O2 Gym acceder a tus contactos para importarlos como clientes."
+        }
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
