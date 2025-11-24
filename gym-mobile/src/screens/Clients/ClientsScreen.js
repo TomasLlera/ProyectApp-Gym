@@ -1,5 +1,4 @@
-// src/screens/Clients/ClientsScreen.js - CON VALIDACIONES ✅
-
+// src/screens/Clients/ClientsScreen.js - CON WHATSAPP
 import React, { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -28,7 +27,6 @@ export default function ClientsScreen({ navigation, route }) {
   const [statusFilter, setStatusFilter] = useState(route.params?.status || '');
   const [showModal, setShowModal] = useState(false);
 
-  // 🔥 AUTO-REFRESH cuando la pantalla toma foco
   useFocusEffect(
     React.useCallback(() => {
       console.log('🔄 Pantalla Clientes enfocada - Recargando datos...');
@@ -36,7 +34,6 @@ export default function ClientsScreen({ navigation, route }) {
     }, [statusFilter, searchTerm])
   );
 
-  // Actualizar filtro cuando cambien los parámetros de navegación
   useEffect(() => {
     if (route.params?.status !== undefined) {
       setStatusFilter(route.params.status);
@@ -47,15 +44,12 @@ export default function ClientsScreen({ navigation, route }) {
     try {
       const clientesList = await clients.getAll();
       
-      // Aplicar filtros
       let filteredClients = clientesList;
       
-      // Filtro por estado de pago
       if (statusFilter) {
         filteredClients = filteredClients.filter(client => client.estadoPago === statusFilter);
       }
       
-      // Filtro por búsqueda
       if (searchTerm) {
         filteredClients = filteredClients.filter(client => 
           client.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -87,8 +81,8 @@ export default function ClientsScreen({ navigation, route }) {
 
   const markAsPaid = async (clientId) => {
     Alert.alert(
-      'Confirmar Pago',
-      '¿Marcar como pagado?',
+      'Confirmar Abono',
+      '¿Marcar como abonado?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -96,8 +90,8 @@ export default function ClientsScreen({ navigation, route }) {
           onPress: async () => {
             try {
               await clients.updatePaymentStatus(clientId, 'pagado');
-              Alert.alert('Éxito', 'Cliente marcado como pagado');
-              loadClients(); // Recargar lista
+              Alert.alert('Éxito', 'Cliente marcado como abonado');
+              loadClients();
             } catch (error) {
               Alert.alert('Error', 'No se pudo actualizar el estado');
             }
@@ -175,7 +169,7 @@ export default function ClientsScreen({ navigation, route }) {
                 markAsPaid(item.id || item._id);
               }}
             >
-              <Text style={styles.payButtonText}>💰 Pagar</Text>
+              <Text style={styles.payButtonText}>💰 Abonar</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -200,50 +194,60 @@ export default function ClientsScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Filters */}
-      <View style={styles.filterContainer}>
+      {/* Navigation Tabs */}
+      <View style={styles.navContainer}>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-          style={styles.filterScroll}
+          contentContainerStyle={styles.navScrollContent}
         >
           <TouchableOpacity
-            style={[styles.filterChip, statusFilter === '' && styles.filterChipActive]}
+            style={[styles.navChip, statusFilter === '' && styles.navChipActive]}
             onPress={() => setStatusFilter('')}
           >
-            <Text style={[styles.filterText, statusFilter === '' && styles.filterTextActive]}>
+            <Text style={[styles.navText, statusFilter === '' && styles.navTextActive]}>
               📊 Todos
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'pagado' && styles.filterChipActive]}
+            style={[styles.navChip, statusFilter === 'pagado' && styles.navChipActive]}
             onPress={() => setStatusFilter('pagado')}
           >
-            <Text style={[styles.filterText, statusFilter === 'pagado' && styles.filterTextActive]}>
+            <Text style={[styles.navText, statusFilter === 'pagado' && styles.navTextActive]}>
               ✅ Al día
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'vencido' && styles.filterChipActive]}
+            style={[styles.navChip, statusFilter === 'vencido' && styles.navChipActive]}
             onPress={() => setStatusFilter('vencido')}
           >
-            <Text style={[styles.filterText, statusFilter === 'vencido' && styles.filterTextActive]}>
+            <Text style={[styles.navText, statusFilter === 'vencido' && styles.navTextActive]}>
               ⚠️ Vencidos
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'pendiente' && styles.filterChipActive]}
+            style={[styles.navChip, statusFilter === 'pendiente' && styles.navChipActive]}
             onPress={() => setStatusFilter('pendiente')}
           >
-            <Text style={[styles.filterText, statusFilter === 'pendiente' && styles.filterTextActive]}>
+            <Text style={[styles.navText, statusFilter === 'pendiente' && styles.navTextActive]}>
               🕐 Pendientes
             </Text>
           </TouchableOpacity>
         </ScrollView>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtonsContainer}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => navigation.navigate('ImportContacts')}
+        >
+          <Text style={styles.actionButtonIcon}>📥</Text>
+          <Text style={styles.actionButtonText}>Importar Contactos</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Client List */}
@@ -277,16 +281,13 @@ export default function ClientsScreen({ navigation, route }) {
         onClose={() => setShowModal(false)}
         onSuccess={() => {
           setShowModal(false);
-          loadClients(); // 🔥 Recargar lista automáticamente
+          loadClients();
         }}
       />
     </View>
   );
 }
 
-// ============================================
-// 🆕 MODAL CON VALIDACIONES COMPLETAS
-// ============================================
 function CreateClientModal({ visible, onClose, onSuccess }) {
   const { clients } = useDatabase();
   const [formData, setFormData] = useState({
@@ -300,21 +301,12 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
 
-  // ============================================
-  // ✅ VERSIÓN CON TODAS LAS VALIDACIONES
-  // ============================================
   const handleSubmit = async () => {
-    // ========================================
-    // VALIDACIÓN 1: Campos obligatorios
-    // ========================================
     if (!formData.nombre || !formData.apellido || !formData.email || !formData.documento) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 2: Longitud mínima de nombres
-    // ========================================
     if (formData.nombre.trim().length < 2) {
       Alert.alert('Error', 'El nombre debe tener al menos 2 caracteres');
       return;
@@ -325,10 +317,7 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 3: Nombres sin números
-    // ========================================
-    const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ'\s]+$/;
     if (!nombreRegex.test(formData.nombre.trim())) {
       Alert.alert('Error', 'El nombre no puede contener números o caracteres especiales');
       return;
@@ -339,27 +328,18 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 4: Formato de email
-    // ========================================
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       Alert.alert('Error', 'Por favor ingresa un email válido');
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 5: DNI exactamente 8 dígitos
-    // ========================================
     const dniRegex = /^\d{8}$/;
     if (!dniRegex.test(formData.documento)) {
       Alert.alert('Error', 'El DNI debe tener exactamente 8 dígitos numéricos');
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 6: Monto válido
-    // ========================================
     const monto = parseFloat(formData.montoMensual);
     if (isNaN(monto) || monto <= 0) {
       Alert.alert('Error', 'El monto debe ser mayor a 0');
@@ -376,37 +356,44 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 7: Teléfono (si se ingresó)
-    // ========================================
     if (formData.telefono.trim()) {
       let telefono = formData.telefono.trim();
       
-      // Si no empieza con +54, agregarlo automáticamente
       if (!telefono.startsWith('+54')) {
-        // Limpiar el número de caracteres no numéricos
         telefono = telefono.replace(/[^0-9]/g, '');
-        // Agregar +54 automáticamente
         telefono = '+54' + telefono;
       }
       
-      // Validar formato final: +54 seguido de al menos 9 dígitos
       const telefonoRegex = /^\+54\d{9,}$/;
       if (!telefonoRegex.test(telefono)) {
         Alert.alert('Error', 'El teléfono debe tener formato +54 seguido de al menos 9 dígitos');
         return;
       }
       
-      // Actualizar el teléfono formateado
       formData.telefono = telefono;
     }
 
-    // ========================================
-    // VALIDACIÓN 8 & 9: Email y DNI únicos (usando funciones del servicio)
-    // ========================================
+    if (formData.email) {
+      Alert.alert(
+        '✉️ Email Registrado',
+        `Este email se usará para:\n\n` +
+        `• Enviar invitaciones de Google Calendar\n` +
+        `• Notificar cambios en rutinas\n` +
+        `• Recordatorios de entrenamiento\n\n` +
+        `Verifica que sea correcto:\n${formData.email}`,
+        [
+          { text: 'Corregir', style: 'cancel' },
+          { text: 'Es Correcto', onPress: () => crearCliente() }
+        ]
+      );
+    } else {
+      crearCliente();
+    }
+  };
+
+  const crearCliente = async () => {
     setLoading(true);
     try {
-      // Usar las funciones de validación del servicio que manejan correctamente los soft deletes
       const isEmailUnique = await clients.validateUniqueEmail(formData.email.toLowerCase().trim());
       if (!isEmailUnique) {
         Alert.alert('Error', 'Ya existe un cliente activo con ese email');
@@ -421,9 +408,6 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
         return;
       }
 
-      // ========================================
-      // ✅ TODAS LAS VALIDACIONES PASADAS - CREAR CLIENTE
-      // ========================================
       await clients.create({
         ...formData,
         nombre: formData.nombre.trim(),
@@ -435,7 +419,6 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
 
       Alert.alert('Éxito', '✅ Cliente creado exitosamente');
       
-      // Reset form
       setFormData({
         nombre: '',
         apellido: '',
@@ -450,7 +433,6 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
     } catch (error) {
       console.error('Error creando cliente:', error);
       
-      // Manejar errores específicos de SQLite
       let errorMessage = 'Error al crear cliente';
       if (error.message.includes('UNIQUE constraint failed: clientes.email')) {
         errorMessage = 'Ya existe un cliente con ese email';
@@ -473,101 +455,148 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       transparent={true}
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <TouchableOpacity 
         style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
       >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Nuevo Cliente</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.modalClose}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.formContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre *"
-              value={formData.nombre}
-              onChangeText={(text) => setFormData({ ...formData, nombre: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Apellido *"
-              value={formData.apellido}
-              onChangeText={(text) => setFormData({ ...formData, apellido: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Email *"
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="DNI * (8 dígitos)"
-              value={formData.documento}
-              onChangeText={(text) => setFormData({ ...formData, documento: text })}
-              keyboardType="numeric"
-              maxLength={8}
-            />
-
-            {/* Selector de Plan */}
-            <View style={styles.planSelector}>
-              <Text style={styles.planLabel}>Tipo de Plan *</Text>
-              <View style={styles.planOptions}>
-                {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
-                  <TouchableOpacity
-                    key={plan}
-                    style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
-                    onPress={() => setFormData({ ...formData, tipoPlan: plan })}
-                  >
-                    <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
-                      {plan.charAt(0).toUpperCase() + plan.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalKeyboardView}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Nuevo Cliente</Text>
+                <TouchableOpacity 
+                  onPress={onClose}
+                  style={styles.modalCloseButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={styles.modalClose}>✕</Text>
+                </TouchableOpacity>
               </View>
+
+              <ScrollView 
+                style={styles.formContainer}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Información Personal */}
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Información Personal</Text>
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nombre *"
+                    value={formData.nombre}
+                    onChangeText={(text) => setFormData({ ...formData, nombre: text })}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Apellido *"
+                    value={formData.apellido}
+                    onChangeText={(text) => setFormData({ ...formData, apellido: text })}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="DNI * (8 dígitos)"
+                    value={formData.documento}
+                    onChangeText={(text) => {
+                      const numbersOnly = text.replace(/[^0-9]/g, '');
+                      if (numbersOnly.length <= 8) {
+                        setFormData({ ...formData, documento: numbersOnly });
+                      }
+                    }}
+                    keyboardType="numeric"
+                    maxLength={8}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email *"
+                    value={formData.email}
+                    onChangeText={(text) => setFormData({ ...formData, email: text })}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                {/* Información de Contacto */}
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Contacto</Text>
+                  
+                  <View style={styles.phoneContainer}>
+                    <Text style={styles.phonePrefix}>+54</Text>
+                    <TextInput
+                      style={[styles.input, styles.phoneInput]}
+                      placeholder="Número de celular (ej: 1123456789)"
+                      value={formData.telefono.replace('+54', '')}
+                      onChangeText={(text) => {
+                        const numbersOnly = text.replace(/[^0-9]/g, '');
+                        setFormData({ ...formData, telefono: numbersOnly ? '+54' + numbersOnly : '' });
+                      }}
+                      keyboardType="phone-pad"
+                      maxLength={15}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
+
+                {/* Información del Plan */}
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Plan y Cuota</Text>
+                  
+                  <View style={styles.planSelector}>
+                    <Text style={styles.planLabel}>Tipo de Plan *</Text>
+                    <View style={styles.planOptions}>
+                      {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
+                        <TouchableOpacity
+                          key={plan}
+                          style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
+                          onPress={() => setFormData({ ...formData, tipoPlan: plan })}
+                        >
+                          <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
+                            {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Cuota Mensual *"
+                    value={formData.montoMensual}
+                    onChangeText={(text) => {
+                      const numbersOnly = text.replace(/[^0-9]/g, '');
+                      setFormData({ ...formData, montoMensual: numbersOnly });
+                    }}
+                    keyboardType="numeric"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                  onPress={handleSubmit}
+                  disabled={loading}
+                >
+                  <Text style={styles.submitButtonText}>
+                    {loading ? 'Validando...' : '✅ Crear Cliente'}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-
-            <View style={styles.phoneContainer}>
-              <Text style={styles.phonePrefix}>+54</Text>
-              <TextInput
-                style={[styles.input, styles.phoneInput]}
-                placeholder="Número de celular (ej: 1123456789)"
-                value={formData.telefono.replace('+54', '')}
-                onChangeText={(text) => {
-                  const numbersOnly = text.replace(/[^0-9]/g, '');
-                  setFormData({ ...formData, telefono: numbersOnly ? '+54' + numbersOnly : '' });
-                }}
-                keyboardType="phone-pad"
-                maxLength={15}
-              />
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Monto Mensual *"
-              value={formData.montoMensual}
-              onChangeText={(text) => setFormData({ ...formData, montoMensual: text })}
-              keyboardType="numeric"
-            />
-
-            <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              <Text style={styles.submitButtonText}>
-                {loading ? 'Validando...' : 'Crear Cliente'}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </TouchableOpacity>
     </Modal>
   );
 }
@@ -589,59 +618,73 @@ const styles = StyleSheet.create({
   },
   searchIcon: { fontSize: 20, marginRight: 8 },
   searchInput: { flex: 1, padding: 12, fontSize: 16, color: '#1F2937' },
-  filterContainer: { 
-    backgroundColor: theme.colors.white,
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    paddingVertical: 16,
+  
+  // Navigation Tabs
+  navContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  filterScroll: {
+  navScrollContent: {
     paddingHorizontal: 16,
+    gap: 8,
   },
-  filterScrollContent: {
-    paddingHorizontal: 0,
+  navChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  navChipActive: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#E55A2B',
+  },
+  navText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  navTextActive: {
+    color: '#FFFFFF',
+  },
+  
+  // Action Buttons
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    padding: 16,
     gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  filterChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    minWidth: 100,
-  },
-  filterChipActive: { 
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primaryDark,
-    shadowColor: theme.colors.primary,
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
-    transform: [{ scale: 1.05 }],
+    borderWidth: 2,
+    borderColor: '#E55A2B',
+    flex: 1,
+    justifyContent: 'center',
   },
-  filterText: { 
-    color: '#64748B', 
-    fontWeight: '700', 
-    fontSize: 13,
-    textAlign: 'center',
+  actionButtonIcon: {
+    fontSize: 16,
+    marginRight: 8,
   },
-  filterTextActive: { 
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   listContainer: { padding: 16 },
   clientCard: {
@@ -713,7 +756,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: theme.colors.primary, // Naranja O2
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: theme.colors.primary,
@@ -738,10 +781,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  modalKeyboardView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   modalContent: {
     backgroundColor: theme.colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    maxHeight: '90%',
     paddingBottom: 40,
   },
   modalHeader: {
@@ -753,16 +801,45 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.colors.text.primary },
-  modalClose: { fontSize: 28, color: theme.colors.text.secondary },
-  formContainer: { padding: 20 },
-  input: {
+  modalCloseButton: {
+    padding: 8,
+    borderRadius: 20,
     backgroundColor: '#F3F4F6',
+    minWidth: 40,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalClose: { fontSize: 24, color: theme.colors.text.secondary, fontWeight: 'bold' },
+  formContainer: { padding: 20 },
+  sectionContainer: {
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
+    color: '#000000',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   phoneContainer: {
     flexDirection: 'row',
@@ -770,26 +847,36 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   phonePrefix: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3B82F6',
+    color: '#1F2937',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#E5E7EB',
     marginRight: 8,
+    minWidth: 60,
+    textAlign: 'center',
   },
   phoneInput: {
     flex: 1,
     marginBottom: 0,
   },
   submitButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#FF6B35',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
+    marginBottom: 30,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: '#E55A2B',
   },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },

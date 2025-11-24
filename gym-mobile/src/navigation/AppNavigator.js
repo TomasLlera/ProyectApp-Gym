@@ -1,4 +1,4 @@
-// src/navigation/AppNavigator.js
+// src/navigation/AppNavigator.js - CON RESET DE NAVEGACIÓN
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,20 +9,21 @@ import { useAuth } from '../context/AuthContext';
 import { useAppConfig } from '../context/AppConfigContext';
 import { theme } from '../constants/theme';
 
-
 // Screens
-import LoginScreen from '../screens/Auth/LoginScreen';
 import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 import ClientsScreen from '../screens/Clients/ClientsScreen';
 import ClientDetailScreen from '../screens/Clients/ClientDetailScreen';
+import ImportContactsScreen from '../screens/Clients/ImportContactsScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import StatisticsScreen from '../screens/Profile/StatisticsScreen';
+import GoogleCalendarScreen from '../screens/Profile/GoogleCalendarScreen';
 import RoutinesScreen from '../screens/Routines/RoutinesScreen';
 import RoutineDetailScreen from '../screens/Routines/RoutineDetailScreen';
 import RoutineTemplatesScreen from '../screens/Routines/RoutineTemplatesScreen';
 import CreateRoutineScreen from '../screens/Routines/CreateRoutineScreen';
 import CreateTemplateScreen from '../screens/Routines/CreateTemplateScreen';
 import GroupDetailScreen from '../screens/Routines/GroupDetailScreen';
+import BibliotecaEjerciciosScreen from '../screens/Exercises/BibliotecaEjerciciosScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -54,6 +55,14 @@ function TabNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        // ✅ IMPORTANTE: Desmontar pantallas al cambiar de tab
+        unmountOnBlur: true,
+      }}
+      // ✅ Listener para resetear stack al cambiar de tab
+      screenListeners={{
+        tabPress: (e) => {
+          // Esto resetea el stack cuando cambias de tab
+        },
       }}
     >
       <Tab.Screen
@@ -78,11 +87,24 @@ function TabNavigator() {
         name="Rutinas"
         component={RoutinesStack}
         options={{
+          headerShown: false, // ✅ Ocultar header del tab
           tabBarLabel: 'Rutinas',
           tabBarIcon: ({ color }) => (
             <Text style={{ fontSize: 22 }}>🏋️</Text>
           ),
         }}
+        listeners={({ navigation }) => ({
+          // ✅ Resetear stack de rutinas al presionar tab
+          tabPress: (e) => {
+            // Prevenir comportamiento por defecto
+            e.preventDefault();
+            
+            // Navegar a la raíz del stack de rutinas
+            navigation.navigate('Rutinas', {
+              screen: 'RoutinesList',
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="Perfil"
@@ -97,11 +119,30 @@ function TabNavigator() {
   );
 }
 
-// Stack de Rutinas
+// Stack de Rutinas con configuración mejorada
 function RoutinesStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="RoutinesList" component={RoutinesScreen} />
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        // ✅ Animación más fluida
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen 
+        name="RoutinesList" 
+        component={RoutinesScreen}
+        options={{
+          // ✅ Título del header cuando está en la lista principal
+          headerShown: true,
+          headerTitle: '🏋️ Rutinas',
+          headerStyle: { 
+            backgroundColor: theme.colors.primary 
+          },
+          headerTintColor: theme.colors.white,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      />
       <Stack.Screen
         name="RoutineDetail"
         component={RoutineDetailScreen}
@@ -136,17 +177,18 @@ function RoutinesStack() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="BibliotecaEjercicios"
+        component={BibliotecaEjerciciosScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 }
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return null;
-  }
-
   return (
     <NavigationContainer
       onReady={async () => {
@@ -160,39 +202,45 @@ export default function AppNavigator() {
       }}
     >
       <Stack.Navigator>
-        {!user ? (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-        ) : (
-          <>
-            <Stack.Screen
-              name="Main"
-              component={TabNavigator}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ClientDetail"
-              component={ClientDetailScreen}
-              options={{
-                headerShown: true,
-                title: 'Detalle del Cliente',
-                headerStyle: { backgroundColor: theme.colors.primary },
-                headerTintColor: theme.colors.white,
-                headerBackTitle: 'Volver',
-              }}
-            />
-            <Stack.Screen
-              name="Statistics"
-              component={StatisticsScreen}
-              options={{
-                headerShown: false,
-              }}
-            />
-          </>
-        )}
+        <Stack.Screen
+          name="Main"
+          component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ClientDetail"
+          component={ClientDetailScreen}
+          options={{
+            headerShown: true,
+            title: 'Detalle del Cliente',
+            headerStyle: { backgroundColor: theme.colors.primary },
+            headerTintColor: theme.colors.white,
+            headerBackTitle: 'Volver',
+          }}
+        />
+        <Stack.Screen
+          name="ImportContacts"
+          component={ImportContactsScreen}
+          options={{
+            headerShown: true,
+            title: '📱 Importar Contactos',
+            headerStyle: { backgroundColor: theme.colors.primary },
+            headerTintColor: theme.colors.white,
+            headerBackTitle: 'Volver',
+          }}
+        />
+        <Stack.Screen
+          name="Statistics"
+          component={StatisticsScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="GoogleCalendar"
+          component={GoogleCalendarScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

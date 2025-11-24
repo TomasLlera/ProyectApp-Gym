@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import backupService from '../../services/backupService';
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { clients } = useDatabase();
   const { appName, adminProfile, updateAppName, updateAdminProfile, updatePassword } = useAppConfig();
   const [quickStats, setQuickStats] = useState(null);
@@ -72,17 +72,6 @@ export default function ProfileScreen({ navigation }) {
       console.error('Error validating password:', error);
       return false;
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro que deseas salir?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Salir', style: 'destructive', onPress: logout }
-      ]
-    );
   };
 
   const handleEditProfile = () => {
@@ -261,7 +250,8 @@ export default function ProfileScreen({ navigation }) {
         `📁 Archivo: ${result.fileName}\n\n` +
         `📊 Datos exportados:\n` +
         `• ${result.metadata.totalClientes} clientes\n` +
-        `• ${result.metadata.totalRutinas} rutinas\n` +
+        `• ${result.metadata.totalRutinas || 0} rutinas asignadas\n` +
+        `• ${result.metadata.totalPlantillas || 0} plantillas de rutinas\n` +
         `• ${result.metadata.totalPagos} pagos\n` +
         `• ${result.metadata.totalGrupos} grupos\n\n` +
         `💡 Guarda este archivo en un lugar seguro (Google Drive, iCloud, etc).`
@@ -434,7 +424,12 @@ export default function ProfileScreen({ navigation }) {
       onPress: backupData
     },
     { icon: '💳', title: 'Métodos de Pago', subtitle: 'Configurar formas de cobro' },
-    { icon: '📅', title: 'Google Calendar', subtitle: 'Vincular calendario' },
+    { 
+      icon: '📅', 
+      title: 'Google Calendar', 
+      subtitle: 'Sincronizar rutinas automáticamente',
+      onPress: () => navigation.navigate('GoogleCalendar')
+    },
     { icon: '❓', title: 'Ayuda y Soporte', subtitle: 'Centro de ayuda' },
   ];
 
@@ -499,11 +494,6 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.appInfoText}>Mi Gimnasio App</Text>
         <Text style={styles.appVersion}>Versión 1.0.0</Text>
       </View>
-
-      {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>🚪 Cerrar Sesión</Text>
-      </TouchableOpacity>
 
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -832,26 +822,6 @@ const styles = StyleSheet.create({
   appVersion: {
     fontSize: 12,
     color: '#9CA3AF',
-  },
-  logoutButton: {
-    backgroundColor: '#EF4444',
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#EF4444',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-    borderWidth: 2,
-    borderColor: '#DC2626',
-  },
-  logoutText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   
   // Modal styles

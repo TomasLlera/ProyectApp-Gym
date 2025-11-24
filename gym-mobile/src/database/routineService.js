@@ -14,19 +14,19 @@ const generateId = () => {
 // Validar datos de rutina
 const validateRoutineData = (routineData) => {
   const errors = [];
-  
+
   // Nombre obligatorio
   if (!routineData.nombre?.trim()) {
     errors.push('El nombre de la rutina es obligatorio');
   } else if (routineData.nombre.trim().length < 3) {
     errors.push('El nombre debe tener al menos 3 caracteres');
   }
-  
+
   // Al menos un día
   if (!routineData.diasSemana || routineData.diasSemana.length === 0) {
     errors.push('Debe seleccionar al menos un día de entrenamiento');
   }
-  
+
   // Validar días válidos
   const diasValidos = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
   if (routineData.diasSemana) {
@@ -35,7 +35,7 @@ const validateRoutineData = (routineData) => {
       errors.push(`Días inválidos: ${diasInvalidos.join(', ')}`);
     }
   }
-  
+
   // Duración válida
   if (routineData.duracionEstimada) {
     const duracion = parseInt(routineData.duracionEstimada);
@@ -43,12 +43,12 @@ const validateRoutineData = (routineData) => {
       errors.push('La duración debe estar entre 10 y 300 minutos');
     }
   }
-  
+
   // Al menos un ejercicio
   if (!routineData.ejercicios || routineData.ejercicios.length === 0) {
     errors.push('Debe agregar al menos un ejercicio');
   }
-  
+
   // Validar ejercicios
   if (routineData.ejercicios && Array.isArray(routineData.ejercicios)) {
     routineData.ejercicios.forEach((ej, index) => {
@@ -63,7 +63,7 @@ const validateRoutineData = (routineData) => {
       }
     });
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors
@@ -75,12 +75,12 @@ const validateUniqueName = async (clienteId, nombre, excludeId = null) => {
   const db = await getDatabase();
   let query = 'SELECT id FROM rutinas WHERE clienteId = ? AND LOWER(nombre) = LOWER(?) AND activa = 1';
   const params = [clienteId, nombre.trim()];
-  
+
   if (excludeId) {
     query += ' AND id != ?';
     params.push(excludeId);
   }
-  
+
   try {
     const existing = await db.getFirstAsync(query, params);
     return !existing;
@@ -95,13 +95,13 @@ export const routineService = {
   create: async (clienteId, routineData) => {
     const db = await getDatabase();
     const id = generateId();
-    
+
     try {
       // Validaciones básicas
       if (!routineData.nombre) {
         throw new Error('El nombre de la rutina es requerido');
       }
-      
+
       if (!routineData.diasSemana || routineData.diasSemana.length === 0) {
         throw new Error('Debe seleccionar al menos un día de entrenamiento');
       }
@@ -299,11 +299,14 @@ export const routineService = {
   getGrouped: async () => {
     const db = await getDatabase();
     try {
+      console.log('📊 Obteniendo grupos de rutinas...');
+
       // Solo obtener rutinas que tienen clientes asignados (no plantillas)
       const rutinas = await db.getAllAsync(
         'SELECT DISTINCT nombre FROM rutinas WHERE activa = 1 AND clienteId IS NOT NULL ORDER BY nombre'
       );
 
+      console.log(`✅ Encontrados ${rutinas.length} grupos únicos`);
       const groups = [];
 
       for (const r of rutinas) {
@@ -320,11 +323,19 @@ export const routineService = {
           // Solo contar clientes si la rutina tiene clienteId
           if (rutina.clienteId) {
             totalClientes++;
+
+            // 🔥 CRÍTICO: Traer TODOS los datos del cliente, incluyendo teléfono
             const cliente = await db.getFirstAsync(
-              'SELECT id, nombre, apellido, email FROM clientes WHERE id = ?',
+              'SELECT id, nombre, apellido, email, telefono, documento FROM clientes WHERE id = ?',
               [rutina.clienteId]
             );
-            if (cliente) clientes.push(cliente);
+
+            if (cliente) {
+              console.log(`✅ Cliente: ${cliente.nombre} - Tel: ${cliente.telefono || 'SIN TEL'}`);
+              clientes.push(cliente);
+            } else {
+              console.warn(`⚠️ Cliente ${rutina.clienteId} no encontrado`);
+            }
           }
 
           // Usar la primera rutina como plantilla para obtener estructura
@@ -347,8 +358,12 @@ export const routineService = {
 
         // Solo agregar grupos que realmente tienen clientes
         if (totalClientes > 0) {
+          const conTelefono = clientes.filter(c => c.telefono).length;
+          console.log(`📞 Grupo "${r.nombre}": ${conTelefono}/${totalClientes} con teléfono`);
+
           groups.push({
             _id: r.nombre,
+            id: r.nombre,
             routineId: templateData?.id,
             nombre: r.nombre,
             tipo: templateData?.tipo,
@@ -356,13 +371,14 @@ export const routineService = {
             diasSemana: templateData?.diasSemana || [],
             duracionEstimada: templateData?.duracionEstimada,
             ejercicios: templateData?.ejercicios || [],
-            clientes,
+            clientes, // Array completo con teléfonos
             cantidad: totalClientes,
             createdAt: templateData?.createdAt
           });
         }
       }
 
+      console.log(`✅ Retornando ${groups.length} grupos con clientes`);
       return groups;
     } catch (error) {
       console.error('❌ Error obteniendo grupos:', error);

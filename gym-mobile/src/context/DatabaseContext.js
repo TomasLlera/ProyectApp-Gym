@@ -3,6 +3,7 @@
 import React, { createContext, useContext } from 'react';
 import { clientService } from '../database/clientService';
 import { routineService } from '../database/routineService';
+import { bibliotecaEjerciciosService } from '../database/bibliotecaEjerciciosService';
 
 const DatabaseContext = createContext();
 
@@ -10,6 +11,7 @@ export const DatabaseProvider = ({ children }) => {
   const value = {
     clients: clientService,
     routines: routineService,
+    biblioteca: bibliotecaEjerciciosService,
     // payments: paymentService, // TODO: Implementar cuando sea necesario
   };
 
