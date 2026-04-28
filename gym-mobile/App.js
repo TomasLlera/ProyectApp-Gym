@@ -13,7 +13,7 @@ import { AppConfigProvider } from './src/context/AppConfigContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { initDatabase } from './src/database/db';
 import { syncFromMongoDB, shouldSync } from './src/database/syncService';
-import googleCalendarService from './src/googleCalendar/googleCalendarService';
+import googleCalendarService from './src/services/googleCalendarService';
 
 // Prevenir que se oculte automáticamente
 SplashScreen.preventAutoHideAsync();
