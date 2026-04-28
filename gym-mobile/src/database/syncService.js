@@ -4,7 +4,7 @@ import { getDatabase } from './db';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SYNC_TIMESTAMP_KEY = 'last_sync_timestamp';
-const API_URL = 'http://192.168.0.83:3000/api';
+const API_URL = 'https://proyectapp-gym-production.up.railway.app/api';
 
 /**
  * Sincronizar datos desde MongoDB a SQLite
