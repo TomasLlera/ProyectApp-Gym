@@ -1,39 +1,37 @@
-// src/navigation/AppNavigator.js
+// src/navigation/AppNavigator.js - CON RESET DE NAVEGACIÓN
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useAuth } from '../context/AuthContext';
 import { useAppConfig } from '../context/AppConfigContext';
 import { theme } from '../constants/theme';
 
-
 // Screens
-import LoginScreen from '../screens/Auth/LoginScreen';
 import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 import ClientsScreen from '../screens/Clients/ClientsScreen';
 import ClientDetailScreen from '../screens/Clients/ClientDetailScreen';
+import ImportContactsScreen from '../screens/Clients/ImportContactsScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import StatisticsScreen from '../screens/Profile/StatisticsScreen';
+import GoogleCalendarScreen from '../screens/Profile/GoogleCalendarScreen';
 import RoutinesScreen from '../screens/Routines/RoutinesScreen';
 import RoutineDetailScreen from '../screens/Routines/RoutineDetailScreen';
 import RoutineTemplatesScreen from '../screens/Routines/RoutineTemplatesScreen';
 import CreateRoutineScreen from '../screens/Routines/CreateRoutineScreen';
 import CreateTemplateScreen from '../screens/Routines/CreateTemplateScreen';
 import GroupDetailScreen from '../screens/Routines/GroupDetailScreen';
+import BibliotecaEjerciciosScreen from '../screens/Exercises/BibliotecaEjerciciosScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function TabIcon({ icon }) {
-  return <Text style={{ fontSize: 24 }}>{icon}</Text>;
-}
-
 function TabNavigator() {
   const { appName } = useAppConfig();
-  
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -45,73 +43,97 @@ function TabNavigator() {
           height: 60,
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.white,
+          backgroundColor: theme.colors.card,
         },
         headerStyle: {
-          backgroundColor: theme.colors.primary,
+          backgroundColor: theme.colors.card,
         },
-        headerTintColor: theme.colors.white,
+        headerTintColor: theme.colors.text.primary,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        unmountOnBlur: true,
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          title: `💪 O2 Gym`,
+          headerShown: false,
           tabBarLabel: 'Inicio',
-          tabBarIcon: ({ color }) => <TabIcon icon="📊" />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Clientes"
         component={ClientsScreen}
         options={{
-          title: '👥 Clientes',
+          title: 'Clientes',
           tabBarLabel: 'Clientes',
-          tabBarIcon: ({ color }) => <TabIcon icon="👥" />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Rutinas"
         component={RoutinesStack}
         options={{
+          headerShown: false,
           tabBarLabel: 'Rutinas',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 22 }}>🏋️</Text>
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="barbell-outline" size={size} color={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('Rutinas', { screen: 'RoutinesList' });
+          },
+        })}
       />
       <Tab.Screen
         name="Perfil"
         component={ProfileScreen}
         options={{
-          title: '⚙️ Configuración',
+          headerShown: false,
           tabBarLabel: 'Perfil',
-          tabBarIcon: ({ color }) => <TabIcon icon="⚙️" />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
   );
 }
 
-// Stack de Rutinas
+// Stack de Rutinas con configuración mejorada
 function RoutinesStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="RoutinesList" component={RoutinesScreen} />
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        // ✅ Animación más fluida
+        animation: 'slide_from_right',
+      }}
+    >
       <Stack.Screen
-        name="RoutineDetail"
-        component={RoutineDetailScreen}
+        name="RoutinesList"
+        component={RoutinesScreen}
         options={{
           headerShown: true,
-          headerTitle: 'Detalle de Rutina',
-          headerStyle: { backgroundColor: theme.colors.white },
+          headerTitle: 'Rutinas',
+          headerStyle: { backgroundColor: theme.colors.card },
           headerTintColor: theme.colors.text.primary,
           headerTitleStyle: { fontWeight: 'bold' },
         }}
+      />
+      <Stack.Screen
+        name="RoutineDetail"
+        component={RoutineDetailScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="RoutineTemplates"
@@ -136,17 +158,18 @@ function RoutinesStack() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="BibliotecaEjercicios"
+        component={BibliotecaEjerciciosScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 }
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return null;
-  }
-
   return (
     <NavigationContainer
       onReady={async () => {
@@ -160,39 +183,45 @@ export default function AppNavigator() {
       }}
     >
       <Stack.Navigator>
-        {!user ? (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-        ) : (
-          <>
-            <Stack.Screen
-              name="Main"
-              component={TabNavigator}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ClientDetail"
-              component={ClientDetailScreen}
-              options={{
-                headerShown: true,
-                title: 'Detalle del Cliente',
-                headerStyle: { backgroundColor: theme.colors.primary },
-                headerTintColor: theme.colors.white,
-                headerBackTitle: 'Volver',
-              }}
-            />
-            <Stack.Screen
-              name="Statistics"
-              component={StatisticsScreen}
-              options={{
-                headerShown: false,
-              }}
-            />
-          </>
-        )}
+        <Stack.Screen
+          name="Main"
+          component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ClientDetail"
+          component={ClientDetailScreen}
+          options={{
+            headerShown: true,
+            title: 'Detalle del Cliente',
+            headerStyle: { backgroundColor: theme.colors.card },
+            headerTintColor: theme.colors.text.primary,
+            headerBackTitle: 'Volver',
+          }}
+        />
+        <Stack.Screen
+          name="ImportContacts"
+          component={ImportContactsScreen}
+          options={{
+            headerShown: true,
+            title: 'Importar Contactos',
+            headerStyle: { backgroundColor: theme.colors.card },
+            headerTintColor: theme.colors.text.primary,
+            headerBackTitle: 'Volver',
+          }}
+        />
+        <Stack.Screen
+          name="Statistics"
+          component={StatisticsScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="GoogleCalendar"
+          component={GoogleCalendarScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -18,13 +18,19 @@ class BackupService {
       
       // 1. Obtener todos los datos
       const clientes = await db.getAllAsync('SELECT * FROM clientes WHERE activo = 1');
+      // Obtener TODAS las rutinas activas (incluyendo plantillas con clienteId = NULL)
       const rutinas = await db.getAllAsync('SELECT * FROM rutinas WHERE activa = 1');
       const pagos = await db.getAllAsync('SELECT * FROM pagos');
       const grupos = await db.getAllAsync('SELECT * FROM grupos WHERE activo = 1');
+      const bibliotecaEjercicios = await db.getAllAsync('SELECT * FROM biblioteca_ejercicios WHERE activo = 1');
       
-      console.log(`📊 Datos obtenidos: ${clientes.length} clientes, ${rutinas.length} rutinas`);
+      // Separar rutinas de plantillas
+      const rutinasConCliente = rutinas.filter(r => r.clienteId !== null);
+      const plantillas = rutinas.filter(r => r.clienteId === null);
       
-      // 2. Obtener datos relacionales de rutinas
+      console.log(`📊 Datos obtenidos: ${clientes.length} clientes, ${rutinasConCliente.length} rutinas, ${plantillas.length} plantillas, ${bibliotecaEjercicios.length} ejercicios en biblioteca`);
+      
+      // 2. Obtener datos relacionales de rutinas (tanto rutinas como plantillas)
       const rutinasCompletas = [];
       for (const rutina of rutinas) {
         const dias = await db.getAllAsync(
@@ -39,6 +45,7 @@ class BackupService {
         
         rutinasCompletas.push({
           ...rutina,
+          esPlantilla: rutina.clienteId === null, // Campo para identificar plantillas
           diasSemana: dias.map(d => d.dia),
           ejercicios
         });
@@ -69,12 +76,16 @@ class BackupService {
           rutinas: rutinasCompletas,
           pagos,
           grupos: gruposCompletos,
+          bibliotecaEjercicios,
         },
         metadata: {
           totalClientes: clientes.length,
-          totalRutinas: rutinasCompletas.length,
+          totalRutinas: rutinasConCliente.length,
+          totalPlantillas: plantillas.length,
+          totalRutinasYPlantillas: rutinasCompletas.length,
           totalPagos: pagos.length,
           totalGrupos: gruposCompletos.length,
+          totalEjercicios: bibliotecaEjercicios.length,
         }
       };
       
@@ -228,7 +239,8 @@ class BackupService {
           `Backup del ${new Date(backup.exportDate).toLocaleString('es-AR')}\n\n` +
           `📊 Datos a importar:\n` +
           `• ${backup.metadata.totalClientes} clientes\n` +
-          `• ${backup.metadata.totalRutinas} rutinas\n` +
+          `• ${backup.metadata.totalRutinas || 0} rutinas asignadas\n` +
+          `• ${backup.metadata.totalPlantillas || 0} plantillas de rutinas\n` +
           `• ${backup.metadata.totalPagos} pagos\n` +
           `• ${backup.metadata.totalGrupos} grupos\n\n` +
           `⚠️ Esto reemplazará los datos actuales.`,
@@ -277,6 +289,7 @@ class BackupService {
       await db.runAsync('UPDATE clientes SET activo = 0 WHERE activo = 1');
       await db.runAsync('UPDATE rutinas SET activa = 0 WHERE activa = 1');
       await db.runAsync('UPDATE grupos SET activo = 0 WHERE activo = 1');
+      await db.runAsync('UPDATE biblioteca_ejercicios SET activo = 0 WHERE activo = 1');
       await db.runAsync('DELETE FROM pagos');
       await db.runAsync('DELETE FROM rutina_dias');
       await db.runAsync('DELETE FROM ejercicios');
@@ -314,10 +327,15 @@ class BackupService {
       }
       console.log(`✅ ${backup.data.clientes.length} clientes importados`);
       
-      // 3. Importar rutinas
-      console.log('🏋️ Importando rutinas...');
+      // 3. Importar rutinas (tanto rutinas asignadas como plantillas)
+      console.log('🏋️ Importando rutinas y plantillas...');
+      let rutinasImportadas = 0;
+      let plantillasImportadas = 0;
+      
       for (const rutina of backup.data.rutinas) {
-        // Insertar rutina
+        const esPlantilla = rutina.clienteId === null || rutina.clienteId === undefined || rutina.esPlantilla;
+        
+        // Insertar rutina (o plantilla si clienteId es null)
         await db.runAsync(
           `INSERT OR REPLACE INTO rutinas (
             id, clienteId, nombre, descripcion, tipo, nivel,
@@ -325,7 +343,7 @@ class BackupService {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             rutina.id,
-            rutina.clienteId,
+            esPlantilla ? null : rutina.clienteId, // Asegurar null para plantillas
             rutina.nombre,
             rutina.descripcion,
             rutina.tipo,
@@ -343,7 +361,7 @@ class BackupService {
         if (rutina.diasSemana && rutina.diasSemana.length > 0) {
           for (const dia of rutina.diasSemana) {
             await db.runAsync(
-              'INSERT INTO rutina_dias (rutinaId, dia) VALUES (?, ?)',
+              'INSERT OR IGNORE INTO rutina_dias (rutinaId, dia) VALUES (?, ?)',
               [rutina.id, dia]
             );
           }
@@ -353,7 +371,7 @@ class BackupService {
         if (rutina.ejercicios && rutina.ejercicios.length > 0) {
           for (const ej of rutina.ejercicios) {
             await db.runAsync(
-              `INSERT INTO ejercicios (
+              `INSERT OR REPLACE INTO ejercicios (
                 rutinaId, nombre, descripcion, series, repeticiones,
                 peso, descanso, grupoMuscular, videoUrl, notas, orden
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -373,8 +391,14 @@ class BackupService {
             );
           }
         }
+        
+        if (esPlantilla) {
+          plantillasImportadas++;
+        } else {
+          rutinasImportadas++;
+        }
       }
-      console.log(`✅ ${backup.data.rutinas.length} rutinas importadas`);
+      console.log(`✅ ${rutinasImportadas} rutinas y ${plantillasImportadas} plantillas importadas`);
       
       // 4. Importar pagos
       console.log('💰 Importando pagos...');
@@ -428,6 +452,42 @@ class BackupService {
         }
       }
       console.log(`✅ ${backup.data.grupos.length} grupos importados`);
+      
+      // 6. Importar biblioteca de ejercicios
+      if (backup.data.bibliotecaEjercicios && backup.data.bibliotecaEjercicios.length > 0) {
+        console.log('💪 Importando biblioteca de ejercicios...');
+        for (const ejercicio of backup.data.bibliotecaEjercicios) {
+          await db.runAsync(
+            `INSERT OR REPLACE INTO biblioteca_ejercicios (
+              id, nombre, descripcion, grupoMuscular, equipamiento,
+              dificultad, videoUrl, imagenUrl, instrucciones,
+              seriesSugeridas, repeticionesSugeridas, descansoSugerido, notas,
+              favorito, usosCount, activo, createdAt, updatedAt
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              ejercicio.id,
+              ejercicio.nombre,
+              ejercicio.descripcion,
+              ejercicio.grupoMuscular,
+              ejercicio.equipamiento,
+              ejercicio.dificultad,
+              ejercicio.videoUrl,
+              ejercicio.imagenUrl,
+              ejercicio.instrucciones,
+              ejercicio.seriesSugeridas,
+              ejercicio.repeticionesSugeridas,
+              ejercicio.descansoSugerido,
+              ejercicio.notas,
+              ejercicio.favorito || 0,
+              ejercicio.usosCount || 0,
+              1, // activo
+              ejercicio.createdAt,
+              ejercicio.updatedAt || new Date().toISOString(),
+            ]
+          );
+        }
+        console.log(`✅ ${backup.data.bibliotecaEjercicios.length} ejercicios importados`);
+      }
       
       console.log('✅ Importación completada exitosamente');
       

@@ -1,6 +1,6 @@
 // src/screens/Dashboard/DashboardScreen.js
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -10,759 +10,619 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Animated,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
 import { theme } from '../../constants/theme';
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días';
+  if (h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function getFormattedDate() {
+  const s = new Date().toLocaleDateString('es-ES', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function getProgressColor(pct) {
+  if (pct >= 0.75) return '#10B981';
+  if (pct >= 0.5) return '#F97316';
+  return '#EF4444';
+}
+
 export default function DashboardScreen({ navigation }) {
-  const { clients, payments } = useDatabase();
+  const { clients } = useDatabase();
   const [stats, setStats] = useState(null);
   const [paidClients, setPaidClients] = useState([]);
+  const [vencidosClients, setVencidosClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showPaidDetails, setShowPaidDetails] = useState(false);
+  const [hideIngresos, setHideIngresos] = useState(false);
 
-  // 🔥 AUTO-REFRESH: Se ejecuta cada vez que la pantalla toma foco
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
   useFocusEffect(
     React.useCallback(() => {
+      fadeAnim.setValue(0);
+      progressAnim.setValue(0);
       loadData();
     }, [])
   );
 
+  const animateIn = (pct) => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1, duration: 500, useNativeDriver: true,
+      }),
+      Animated.timing(progressAnim, {
+        toValue: pct, duration: 900, delay: 400, useNativeDriver: false,
+      }),
+    ]).start();
+  };
+
   const loadData = async () => {
     try {
-      // ========================================
-      // VALIDACIÓN 1: Verificar que clients esté disponible
-      // ========================================
-      if (!clients || !clients.getAll) {
-        throw new Error('Servicio de clientes no disponible');
-      }
+      if (!clients?.getAll) throw new Error('Servicio no disponible');
 
       const allClients = await clients.getAll();
-      
-      // ========================================
-      // VALIDACIÓN 2: Verificar que sea un array válido
-      // ========================================
-      if (!Array.isArray(allClients)) {
-        throw new Error('Datos de clientes inválidos');
-        return;
-      }
+      if (!Array.isArray(allClients)) throw new Error('Datos inválidos');
 
-      console.log(`📊 Cargando estadísticas para ${allClients.length} clientes`);
-
-      // ========================================
-      // VALIDACIÓN 3: Filtrar clientes con datos incompletos o inválidos
-      // ========================================
-      const validClients = allClients.filter(c => {
-        // Verificar campos obligatorios
-        if (!c.nombre || !c.apellido) {
-          console.warn(`⚠️ Cliente sin nombre completo:`, c.id);
-          return false;
-        }
-        
-        // Verificar que montoMensual sea un número válido
-        if (c.montoMensual === null || c.montoMensual === undefined || isNaN(c.montoMensual)) {
-          console.warn(`⚠️ Cliente ${c.nombre} sin monto válido`);
-          return false;
-        }
-
-        return true;
-      });
-
-      console.log(`✅ ${validClients.length} clientes válidos de ${allClients.length} totales`);
-
-      // ========================================
-      // VALIDACIÓN 4: Verificar y corregir estadoPago inválido
-      // ========================================
-      const validStates = ['pagado', 'vencido', 'pendiente'];
-      validClients.forEach(c => {
-        if (!validStates.includes(c.estadoPago)) {
-          console.warn(`⚠️ Cliente ${c.nombre} con estado inválido: ${c.estadoPago}`);
-          c.estadoPago = 'pendiente'; // Valor por defecto
-        }
-      });
-
-      // ========================================
-      // CALCULAR ESTADÍSTICAS CON DATOS VALIDADOS
-      // ========================================
-      const clientesPagados = validClients.filter(c => c.estadoPago === 'pagado').length;
-      const clientesVencidos = validClients.filter(c => c.estadoPago === 'vencido').length;
-      const clientesPendientes = validClients.filter(c => c.estadoPago === 'pendiente').length;
-
-      // Calcular ingresos solo de clientes pagados con monto válido
-      const ingresosMes = validClients
-        .filter(c => c.estadoPago === 'pagado')
-        .reduce((sum, c) => {
-          const monto = parseFloat(c.montoMensual) || 0;
-          return sum + monto;
-        }, 0);
-
-      // ========================================
-      // VALIDACIÓN 5: Verificar que los números sean válidos
-      // ========================================
-      if (isNaN(ingresosMes)) {
-        console.error('❌ Error calculando ingresos');
-        throw new Error('Error en cálculo de ingresos');
-      }
-
-      setStats({
-        totalClientes: validClients.length,
-        clientesPagados,
-        clientesVencidos,
-        clientesPendientes,
-        ingresosMes: Math.round(ingresosMes) // Redondear para evitar decimales extraños
-      });
-
-      // ========================================
-      // OBTENER CLIENTES PAGADOS PARA LA LISTA
-      // ========================================
-      const clientesPagadosRecientes = validClients
-        .filter(c => c.estadoPago === 'pagado')
-        .sort((a, b) => {
-          // Ordenar por fecha de actualización (más reciente primero)
-          const dateA = new Date(a.updatedAt || a.fechaUltimoPago || 0);
-          const dateB = new Date(b.updatedAt || b.fechaUltimoPago || 0);
-          return dateB - dateA;
-        })
-        .slice(0, 10); // Solo los últimos 10
-
-      setPaidClients(clientesPagadosRecientes);
-
-      console.log('✅ Dashboard cargado exitosamente');
-
-    } catch (error) {
-      console.error('❌ Error cargando datos del dashboard:', error);
-      
-      // Mostrar error al usuario
-      Alert.alert(
-        'Error',
-        'No se pudieron cargar los datos del dashboard. Por favor, intenta nuevamente.',
-        [
-          { text: 'Reintentar', onPress: () => loadData() },
-          { text: 'Cancelar', style: 'cancel' }
-        ]
+      const valid = allClients.filter(c =>
+        c.nombre && c.apellido &&
+        c.montoMensual != null && !isNaN(c.montoMensual)
       );
 
-      // Establecer valores por defecto para evitar crashes
+      const validStates = ['pagado', 'vencido', 'pendiente'];
+      valid.forEach(c => { if (!validStates.includes(c.estadoPago)) c.estadoPago = 'pendiente'; });
+
+      const pagados  = valid.filter(c => c.estadoPago === 'pagado');
+      const vencidos = valid.filter(c => c.estadoPago === 'vencido');
+
+      const ingresosMes = pagados.reduce((sum, c) => sum + (parseFloat(c.montoMensual) || 0), 0);
+
       setStats({
-        totalClientes: 0,
-        clientesPagados: 0,
-        clientesVencidos: 0,
-        clientesPendientes: 0,
-        ingresosMes: 0
+        totalClientes:     valid.length,
+        clientesPagados:   pagados.length,
+        clientesVencidos:  vencidos.length,
+        clientesPendientes: valid.filter(c => c.estadoPago === 'pendiente').length,
+        ingresosMes:       Math.round(ingresosMes),
       });
+
+      const byDate = arr => [...arr].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+      setPaidClients(byDate(pagados).slice(0, 10));
+      setVencidosClients(byDate(vencidos));
+
+      const pct = valid.length > 0 ? pagados.length / valid.length : 0;
+      animateIn(pct);
+
+    } catch (err) {
+      console.error('Error cargando dashboard:', err);
+      setStats({ totalClientes: 0, clientesPagados: 0, clientesVencidos: 0, clientesPendientes: 0, ingresosMes: 0 });
       setPaidClients([]);
+      setVencidosClients([]);
+      animateIn(0);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadData();
-  };
+  const onRefresh = () => { setRefreshing(true); loadData(); };
 
-  const sendReminders = () => {
-    // Obtener clientes vencidos para recordatorios
-    const vencidos = paidClients.filter(c => c.estadoPago === 'vencido');
-    
-    if (vencidos.length === 0) {
-      Alert.alert('Info', 'No hay clientes con pagos vencidos');
+  const sendWhatsApp = (client) => {
+    if (!client.telefono) {
+      Alert.alert('Sin teléfono', `${client.nombre} no tiene teléfono registrado`);
       return;
     }
-    
-    Alert.alert(
-      'Enviar Recordatorios WhatsApp',
-      `¿Enviar recordatorio por WhatsApp a ${vencidos.length} clientes vencidos?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Enviar', 
-          onPress: () => handleSendReminders(vencidos)
-        }
-      ]
-    );
-  };
-
-  const handleSendReminders = async (vencidos) => {
-    try {
-      // Mostrar loading
-      Alert.alert('Enviando...', 'Enviando recordatorios por WhatsApp');
-      
-      // TODO: Implementar funcionalidad de WhatsApp con SQLite
-      // Por ahora simulamos el envío
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      Alert.alert('Recordatorios Enviados', `✅ Recordatorios enviados a ${vencidos.length} clientes`);
-      
-      // Recargar datos para actualizar la vista
-      loadData();
-    } catch (error) {
-      console.error('Error enviando recordatorios:', error);
-      Alert.alert('Error', 'Ocurrió un error al enviar los recordatorios');
-    }
+    let phone = client.telefono.replace(/[^0-9+]/g, '');
+    if (!phone.startsWith('+54')) phone = '+54' + phone.replace(/^0/, '');
+    const num = phone.replace('+', '');
+    const msg = `Hola ${client.nombre}! Te recordamos que tu cuota en O2 Gym está vencida. Por favor acercate a regularizar. ¡Gracias!`;
+    Linking.openURL(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`);
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <Ionicons name="barbell-outline" size={52} color="#F97316" />
         <Text style={styles.loadingText}>Cargando...</Text>
       </View>
     );
   }
 
+  const pct = stats?.totalClientes > 0 ? stats.clientesPagados / stats.totalClientes : 0;
+  const progressColor = getProgressColor(pct);
+
   return (
-    <LinearGradient
-      colors={['#1A1A1A', '#2A2A2A', '#1A1A1A']}
-      style={styles.gradientContainer}
-    >
+    <LinearGradient colors={['#0F0F0F', '#1A1A1A', '#0F0F0F']} style={styles.gradientContainer}>
       <ScrollView
         style={styles.container}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F97316" />
         }
       >
-      {/* Ingresos Card - Movido al principio */}
-      <TouchableOpacity 
-        style={styles.revenueCardTop}
-        onPress={() => navigation.navigate('Statistics')}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.revenueIcon}>💰</Text>
-        <View style={styles.revenueInfo}>
-          <Text style={styles.revenueTitle}>Ingresos del Mes</Text>
-          <Text style={styles.revenueValue}>
-            ${(stats?.ingresosMes || 0).toLocaleString()}
-          </Text>
-        </View>
-        <Text style={styles.revenueArrow}>→</Text>
-      </TouchableOpacity>
+        <Animated.View style={{ opacity: fadeAnim }}>
 
-      {/* Stats Cards */}
-      <View style={styles.statsGrid}>
-        <StatCard
-          title="Total Clientes"
-          value={stats?.totalClientes || 0}
-          icon="👥"
-          color="#3B82F6"
-          onPress={() => navigation.navigate('Clientes', { status: '' })}
-        />
-        <StatCard
-          title="Al Día"
-          value={stats?.clientesPagados || 0}
-          icon="✅"
-          color="#10B981"
-          onPress={() => navigation.navigate('Clientes', { status: 'pagado' })}
-        />
-        <StatCard
-          title="Vencidos"
-          value={stats?.clientesVencidos || 0}
-          icon="⚠️"
-          color="#EF4444"
-          onPress={() => navigation.navigate('Clientes', { status: 'vencido' })}
-        />
-        <StatCard
-          title="Pendientes"
-          value={stats?.clientesPendientes || 0}
-          icon="🕒"
-          color="#F59E0B"
-          onPress={() => navigation.navigate('Clientes', { status: 'pendiente' })}
-        />
-      </View>
-
-      {/* Send Reminders Button */}
-      {stats?.clientesVencidos > 0 && (
-        <TouchableOpacity style={styles.reminderButton} onPress={sendReminders}>
-          <View style={styles.reminderButtonContent}>
-            <Text style={styles.reminderButtonText}>
-              📢 Enviar Recordatorios
-            </Text>
-            <View style={styles.reminderCountBadge}>
-              <Text style={styles.reminderCountText}>{stats?.clientesVencidos}</Text>
-            </View>
+          {/* ── GREETING ── */}
+          <View style={styles.greeting}>
+            <Text style={styles.greetingText}>{getGreeting()}</Text>
+            <Text style={styles.greetingDate}>{getFormattedDate()}</Text>
           </View>
-        </TouchableOpacity>
-      )}
 
-      {/* Últimos Pagos */}
-      {paidClients.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <Text style={styles.sectionTitle}>
-                ✅ Últimos Pagos
+          {/* ── INGRESOS CARD ── */}
+          <View style={styles.revenueCardWrapper}>
+            <LinearGradient
+              colors={['#F97316', '#EA580C', '#B45309']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.revenueCard}
+            >
+              <View style={styles.revenueLeft}>
+                <View style={styles.revenueLabelRow}>
+                  <Text style={styles.revenueLabel}>Ingresos del mes</Text>
+                  <TouchableOpacity
+                    onPress={() => setHideIngresos(v => !v)}
+                    style={styles.eyeBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name={hideIngresos ? 'eye-off-outline' : 'eye-outline'}
+                      size={16}
+                      color="rgba(255,255,255,0.8)"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.revenueValue}>
+                  {hideIngresos ? '$ ••••••' : `$${(stats?.ingresosMes || 0).toLocaleString()}`}
+                </Text>
+                <Text style={styles.revenueSubtitle}>
+                  {stats?.clientesPagados || 0} pagos registrados
+                </Text>
+              </View>
+              <View style={styles.revenueRight}>
+                <Ionicons name="cash-outline" size={56} color="rgba(255,255,255,0.2)" />
+                <TouchableOpacity
+                  style={styles.revenueLink}
+                  onPress={() => navigation.navigate('Statistics')}
+                >
+                  <Ionicons name="bar-chart-outline" size={13} color="rgba(255,255,255,0.85)" />
+                  <Text style={styles.revenueLinkText}>Ver estadísticas</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* ── STATS GRID ── */}
+          <View style={styles.statsGrid}>
+            <StatCard title="Total"     value={stats?.totalClientes || 0}     icon="people"           color="#3B82F6" onPress={() => navigation.navigate('Clientes')} />
+            <StatCard title="Al Día"    value={stats?.clientesPagados || 0}   icon="checkmark-circle" color="#10B981" onPress={() => navigation.navigate('Clientes', { status: 'pagado' })} />
+            <StatCard title="Vencidos"  value={stats?.clientesVencidos || 0}  icon="alert-circle"     color="#EF4444" onPress={() => navigation.navigate('Clientes', { status: 'vencido' })} />
+            <StatCard title="Pendientes" value={stats?.clientesPendientes || 0} icon="time"           color="#F59E0B" onPress={() => navigation.navigate('Clientes', { status: 'pendiente' })} />
+          </View>
+
+          {/* ── PROGRESS BAR ── */}
+          <View style={styles.progressSection}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressTitle}>Cobros del mes</Text>
+              <Text style={[styles.progressPct, { color: progressColor }]}>
+                {stats?.clientesPagados || 0}/{stats?.totalClientes || 0}
+                {'  '}{Math.round(pct * 100)}%
               </Text>
-              <View style={styles.clientCountBadge}>
-                <Text style={styles.clientCountText}>{paidClients.length}</Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  {
+                    backgroundColor: progressColor,
+                    width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+                  },
+                ]}
+              />
+            </View>
+            <View style={styles.progressLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+                <Text style={styles.legendText}>Bajo</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#F97316' }]} />
+                <Text style={styles.legendText}>Medio</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+                <Text style={styles.legendText}>Bien</Text>
               </View>
             </View>
-            <TouchableOpacity 
-              style={styles.seeAllButton}
-              onPress={() => setShowPaidDetails(!showPaidDetails)}
-            >
-              <Text style={styles.seeAllText}>
-                {showPaidDetails ? 'Ocultar detalles' : 'Ver todos'}
-              </Text>
-              <Text style={[styles.seeAllArrow, { transform: [{ rotate: showPaidDetails ? '90deg' : '0deg' }] }]}>
-                {showPaidDetails ? '↑' : '→'}
-              </Text>
-            </TouchableOpacity>
           </View>
 
-          {/* Detalles expandibles de pagos */}
-          {showPaidDetails && (
-            <View style={styles.expandedDetails}>
-              {paidClients.slice(0, 10).map((client) => (
-                <TouchableOpacity
-                  key={client.id || client._id}
-                  style={styles.clientCard}
-                  onPress={() => navigation.navigate('ClientDetail', { clientId: client.id || client._id })}
-                >
-                  <View style={styles.clientCompactInfo}>
-                    {/* Primera línea: Nombre y Monto */}
-                    <View style={styles.firstRow}>
-                      <Text style={styles.clientName}>
-                        {client.nombre} {client.apellido}
-                      </Text>
-                      <Text style={styles.amountText}>${client.montoMensual}</Text>
-                    </View>
-                    
-                    {/* Segunda línea: Fecha y Estado */}
-                    <View style={styles.secondRow}>
-                      <Text style={styles.dateText}>
-                        {client.updatedAt 
-                          ? new Date(client.updatedAt).toLocaleDateString('es-ES', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric'
-                            })
-                          : 'Sin fecha'
-                        }
-                      </Text>
-                      <Text style={styles.paidText}>✅ Pagado</Text>
-                    </View>
+          {/* ── QUICK ACTIONS ── */}
+          <View style={styles.quickSection}>
+            <Text style={styles.quickSectionLabel}>Acciones rápidas</Text>
+            <View style={styles.quickRow}>
+              <QuickBtn icon="person-add-outline" label="Nuevo Cliente"  color="#3B82F6" onPress={() => navigation.navigate('Clientes')} />
+              <QuickBtn icon="barbell-outline"    label="Nueva Rutina"   color="#8B5CF6" onPress={() => navigation.navigate('Rutinas')} />
+              <QuickBtn icon="library-outline"    label="Ejercicios"     color="#10B981" onPress={() => navigation.navigate('Rutinas', { screen: 'BibliotecaEjercicios' })} />
+              <QuickBtn icon="stats-chart"        label="Estadísticas"   color="#F59E0B" onPress={() => navigation.navigate('Statistics')} />
+            </View>
+          </View>
+
+          {/* ── VENCIDOS ALERT ── */}
+          {vencidosClients.length > 0 && (
+            <View style={styles.alertSection}>
+              <View style={styles.alertHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="warning" size={17} color="#EF4444" />
+                  <Text style={styles.alertTitle}>Pagos vencidos</Text>
+                  <View style={styles.alertBadge}>
+                    <Text style={styles.alertBadgeText}>{vencidosClients.length}</Text>
                   </View>
-                </TouchableOpacity>
-              ))}
-              
-              {/* Botón para ver todos en la pantalla de clientes */}
-              {paidClients.length > 10 && (
-                <TouchableOpacity 
-                  style={styles.viewAllClientsButton}
-                  onPress={() => navigation.navigate('Clientes', { status: 'pagado' })}
+                </View>
+                <TouchableOpacity
+                  style={styles.alertWaBtn}
+                  onPress={() => {
+                    const withPhone = vencidosClients.filter(c => c.telefono);
+                    if (withPhone.length === 0) {
+                      Alert.alert('Sin teléfonos', 'Ningún cliente vencido tiene teléfono');
+                      return;
+                    }
+                    sendWhatsApp(withPhone[0]);
+                  }}
                 >
-                  <Text style={styles.viewAllClientsText}>
-                    Ver todos los {paidClients.length} clientes pagados →
+                  <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
+                  <Text style={styles.alertWaText}>Avisar</Text>
+                </TouchableOpacity>
+              </View>
+
+              {vencidosClients.slice(0, 5).map((client) => (
+                <View key={client.id} style={styles.vencidoRow}>
+                  <TouchableOpacity
+                    style={styles.vencidoMain}
+                    onPress={() => navigation.navigate('ClientDetail', { clientId: client.id })}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.vencidoAvatar}>
+                      <Text style={styles.vencidoAvatarText}>
+                        {client.nombre.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.vencidoInfo}>
+                      <Text style={styles.vencidoName}>{client.nombre} {client.apellido}</Text>
+                      <Text style={styles.vencidoAmount}>${client.montoMensual}</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.vencidoWa} onPress={() => sendWhatsApp(client)}>
+                    <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {vencidosClients.length > 5 && (
+                <TouchableOpacity
+                  style={styles.alertViewAll}
+                  onPress={() => navigation.navigate('Clientes', { status: 'vencido' })}
+                >
+                  <Text style={styles.alertViewAllText}>
+                    Ver {vencidosClients.length - 5} más vencidos →
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
           )}
-        </View>
-      )}
+
+          {/* ── ÚLTIMOS PAGOS ── */}
+          {paidClients.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="checkmark-circle" size={17} color="#10B981" />
+                  <Text style={styles.sectionTitle}>Últimos pagos</Text>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{paidClients.length}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.toggleBtn}
+                  onPress={() => setShowPaidDetails(v => !v)}
+                >
+                  <Text style={styles.toggleBtnText}>
+                    {showPaidDetails ? 'Ocultar' : 'Ver todos'}
+                  </Text>
+                  <Ionicons
+                    name={showPaidDetails ? 'chevron-up' : 'chevron-down'}
+                    size={13} color="#fff"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {showPaidDetails && (
+                <View style={styles.expandedList}>
+                  {paidClients.map((client) => (
+                    <TouchableOpacity
+                      key={client.id}
+                      style={styles.clientCard}
+                      onPress={() => navigation.navigate('ClientDetail', { clientId: client.id })}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.clientRow1}>
+                        <Text style={styles.clientName}>{client.nombre} {client.apellido}</Text>
+                        <Text style={styles.clientAmount}>${client.montoMensual}</Text>
+                      </View>
+                      <View style={styles.clientRow2}>
+                        <Text style={styles.clientDate}>
+                          {client.updatedAt
+                            ? new Date(client.updatedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                            : 'Sin fecha'
+                          }
+                        </Text>
+                        <Text style={styles.paidBadge}>Pagado</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  {paidClients.length >= 10 && (
+                    <TouchableOpacity
+                      style={styles.viewAllBtn}
+                      onPress={() => navigation.navigate('Clientes', { status: 'pagado' })}
+                    >
+                      <Text style={styles.viewAllBtnText}>Ver todos los pagados →</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={{ height: 24 }} />
+        </Animated.View>
       </ScrollView>
     </LinearGradient>
   );
 }
 
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
 function StatCard({ title, value, icon, color, onPress }) {
   return (
     <TouchableOpacity
-      style={[styles.statCard, { backgroundColor: color }]}
+      style={[styles.statCard, { borderColor: color + '55' }]}
       onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={0.8}
+      activeOpacity={0.75}
     >
-      <View style={styles.statCardContent}>
-        <View style={styles.statIconRow}>
-          <Text style={styles.statIcon}>{icon}</Text>
-          <Text style={styles.statValue}>{value}</Text>
-        </View>
-        <Text style={styles.statTitle}>{title}</Text>
-      </View>
+      <Ionicons name={icon} size={18} color={color} />
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
     </TouchableOpacity>
   );
 }
 
+function QuickBtn({ icon, label, color, onPress }) {
+  return (
+    <TouchableOpacity style={styles.quickBtn} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.quickBtnCircle, { backgroundColor: color, shadowColor: color }]}>
+        <Ionicons name={icon} size={22} color="#fff" />
+      </View>
+      <Text style={styles.quickBtnLabel} numberOfLines={2}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  gradientContainer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
+  gradientContainer: { flex: 1 },
+  container: { flex: 1 },
 
-  // ⏳ Loading
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#0F0F0F', gap: 14,
   },
-  loadingText: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    fontWeight: '500',
-  },
+  loadingText: { fontSize: 16, color: '#A1A1AA', fontWeight: '600' },
 
-  // 📊 Grid de estadísticas (Diseño cuadrado compacto)
+  // ── GREETING
+  greeting: {
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 12,
+  },
+  greetingText: { fontSize: 22, fontWeight: '800', color: '#F5F5F5' },
+  greetingDate: { fontSize: 13, color: '#71717A', marginTop: 2, textTransform: 'capitalize' },
+
+  // ── REVENUE CARD
+  revenueCardWrapper: {
+    marginHorizontal: 16, marginBottom: 12,
+    borderRadius: 18,
+    shadowColor: '#F97316', shadowOpacity: 0.45,
+    shadowRadius: 14, shadowOffset: { width: 0, height: 5 },
+    elevation: 10,
+  },
+  revenueCard: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 22, borderRadius: 18,
+  },
+  revenueLeft: { flex: 1 },
+  revenueLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  revenueLabel: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  eyeBtn: { padding: 2 },
+  revenueValue: { fontSize: 34, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 4 },
+  revenueSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
+  revenueRight: { alignItems: 'center', gap: 10 },
+  revenueLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  revenueLinkText: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+
+  // ── STATS GRID
   statsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    paddingVertical: 0,
-    gap: 6,
-    justifyContent: 'space-between',
+    paddingHorizontal: 16, gap: 8,
+    marginBottom: 12,
   },
   statCard: {
-    width: '48%',
-    aspectRatio: 1.3,
+    flex: 1,
+    backgroundColor: '#1C1C1E',
     borderRadius: 12,
-    padding: 8,
-    shadowColor: theme.colors.primary,
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    transform: [{ scale: 1 }],
+    paddingVertical: 12, paddingHorizontal: 6,
+    alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: '#2C2C2E',
   },
-  statCardContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statIcon: {
-    fontSize: 28,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-    marginRight: 8,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-    letterSpacing: 0.5,
-  },
+  statValue: { fontSize: 20, fontWeight: '800' },
   statTitle: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.95,
-    fontWeight: '700',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: 4,
+    fontSize: 10, color: '#71717A',
+    fontWeight: '600', textTransform: 'uppercase',
+    textAlign: 'center', letterSpacing: 0.2,
   },
 
-  // 💰 Tarjeta de ingresos (en la parte superior)
-  revenueCardTop: {
-    backgroundColor: theme.colors.primary, // Naranja O2
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 12,
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: theme.colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    transform: [{ scale: 1 }],
+  // ── PROGRESS BAR
+  progressSection: {
+    backgroundColor: '#1C1C1E',
+    marginHorizontal: 16, marginBottom: 12,
+    padding: 16, borderRadius: 14,
+    borderWidth: 1, borderColor: '#2C2C2E',
   },
-  // 💰 Tarjeta de ingresos (versión anterior)
-  revenueCard: {
-    backgroundColor: '#8B5CF6',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 24,
-    padding: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+  progressHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 12,
   },
-  revenueIcon: {
-    fontSize: 40,
-    marginRight: 14,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+  progressTitle: { fontSize: 14, fontWeight: '700', color: '#F5F5F5' },
+  progressPct: { fontSize: 13, fontWeight: '700' },
+  progressTrack: {
+    height: 10, backgroundColor: '#2C2C2E',
+    borderRadius: 5, overflow: 'hidden', marginBottom: 10,
   },
-  revenueInfo: {
-    flex: 1,
+  progressFill: { height: '100%', borderRadius: 5 },
+  progressLegend: { flexDirection: 'row', gap: 16 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendText: { fontSize: 11, color: '#71717A' },
+
+  // ── QUICK ACTIONS
+  quickSection: { marginHorizontal: 16, marginBottom: 12 },
+  quickSectionLabel: {
+    fontSize: 12, fontWeight: '700', color: '#71717A',
+    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 14,
   },
-  revenueTitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-    marginBottom: 4,
-    fontWeight: '500',
+  quickRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  quickBtn: { flex: 1, alignItems: 'center', gap: 8 },
+  quickBtnCircle: {
+    width: 54, height: 54, borderRadius: 27,
+    justifyContent: 'center', alignItems: 'center',
+    shadowOpacity: 0.4, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
-  revenueValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  revenueArrow: {
-    fontSize: 20,
-    color: '#fff',
-    opacity: 0.9,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    marginLeft: 10,
+  quickBtnLabel: {
+    fontSize: 11, color: '#A1A1AA', fontWeight: '600',
+    textAlign: 'center', lineHeight: 15,
   },
 
-  // 🔔 Botón de recordatorios
-  reminderButton: {
-    backgroundColor: theme.colors.primary,
-    marginHorizontal: 20,
-    marginVertical: 12,
-    paddingVertical: 12,
-    borderRadius: 20,
-    alignItems: 'center',
-    shadowColor: theme.colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    transform: [{ scale: 1 }],
+  // ── VENCIDOS ALERT
+  alertSection: {
+    backgroundColor: '#1A0A0A',
+    marginHorizontal: 16, marginBottom: 12,
+    padding: 14, borderRadius: 14,
+    borderWidth: 1, borderColor: '#7F1D1D',
+    borderLeftWidth: 3, borderLeftColor: '#EF4444',
   },
-  reminderButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  alertHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 12,
+    paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#7F1D1D',
   },
-  reminderButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    letterSpacing: 0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    marginRight: 10,
+  alertTitle: { fontSize: 14, fontWeight: '700', color: '#F5F5F5' },
+  alertBadge: {
+    backgroundColor: '#EF4444', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 2,
   },
-  reminderCountBadge: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 2,
-    borderColor: '#FDE68A',
-    shadowColor: '#D97706',
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+  alertBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  alertWaBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#0D2818', paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 8, borderWidth: 1, borderColor: '#25D366',
   },
-  reminderCountText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#D97706',
+  alertWaText: { fontSize: 11, color: '#25D366', fontWeight: '600' },
+  vencidoRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: 6,
   },
+  vencidoMain: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#2A0F0F', borderRadius: 10,
+    padding: 10, marginRight: 8,
+    borderWidth: 1, borderColor: '#7F1D1D',
+  },
+  vencidoAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center', alignItems: 'center', marginRight: 10,
+  },
+  vencidoAvatarText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  vencidoInfo: { flex: 1 },
+  vencidoName: { fontSize: 13, fontWeight: '600', color: '#F5F5F5' },
+  vencidoAmount: { fontSize: 12, color: '#EF4444', fontWeight: '600', marginTop: 1 },
+  vencidoWa: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#0D2818',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#25D366',
+  },
+  alertViewAll: { alignItems: 'center', paddingVertical: 8, marginTop: 4 },
+  alertViewAllText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
 
-  // 📋 Sección de vencidos
-  section: { 
-    backgroundColor: '#fff', 
-    margin: 16, 
-    marginTop: 0, 
-    padding: 16, 
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 2,
-    borderColor: '#FFE5DC',  // Borde naranja suave
+  // ── ÚLTIMOS PAGOS
+  section: {
+    backgroundColor: '#1C1C1E',
+    marginHorizontal: 16, marginBottom: 8,
+    padding: 14, borderRadius: 14,
+    borderWidth: 1, borderColor: '#2C2C2E',
   },
   sectionHeader: {
-    flexDirection: 'column',
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: '#FF6B35',  // Naranja O2
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 12,
+    paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#2C2C2E',
   },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#F5F5F5' },
+  countBadge: {
+    backgroundColor: '#431407', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderWidth: 1, borderColor: '#F97316',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1A1A1A',  // Negro O2
-    marginRight: 12,
-    textAlign: 'center',
+  countBadgeText: { fontSize: 11, fontWeight: '700', color: '#EA6C0A' },
+  toggleBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#F97316', paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 8, borderWidth: 1, borderColor: '#EA6C0A',
   },
-  clientCountBadge: {
-    backgroundColor: '#FFE5DC',  // Naranja muy claro
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 2,
-    borderColor: '#FF6B35',  // Naranja O2
-    shadowColor: '#FF6B35',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  clientCountText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#E55A2B',  // Naranja oscuro
-  },
-  seeAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF6B35',  // Naranja O2
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#E55A2B',  // Naranja oscuro
-    shadowColor: '#FF6B35',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-    minWidth: '100%',
-    transform: [{ scale: 1 }],
-  },
-  seeAllText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginRight: 6,
-  },
-  seeAllArrow: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-    transition: 'transform 0.3s ease',
-  },
-  expandedDetails: {
-    marginTop: 8,
-  },
-  viewAllClientsButton: {
-    backgroundColor: '#FFF5F2',  // Naranja muy suave
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 18,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FF6B35',  // Naranja O2
-    borderStyle: 'solid',
-    shadowColor: '#FF6B35',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    transform: [{ scale: 1 }],
-  },
-  viewAllClientsText: {
-    color: '#E55A2B',  // Naranja oscuro
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // 👤 Tarjetas de clientes
+  toggleBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  expandedList: { marginTop: 4 },
   clientCard: {
-    backgroundColor: '#FFF5F2',  // Fondo naranja muy suave
-    padding: 14,
-    borderRadius: 20,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: '#FFD4C4',  // Borde naranja claro
-    borderLeftWidth: 5,
-    borderLeftColor: '#FF6B35',  // Borde izquierdo naranja O2
-    shadowColor: '#FF6B35',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-    transform: [{ scale: 1 }],
+    backgroundColor: '#0F0F0F', padding: 12,
+    borderRadius: 12, marginBottom: 6,
+    borderLeftWidth: 3, borderLeftColor: '#F97316',
   },
-  clientCompactInfo: {
-    flex: 1,
+  clientRow1: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 6,
   },
-  firstRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+  clientRow2: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  clientName: { fontSize: 14, fontWeight: '700', color: '#F5F5F5', flex: 1, marginRight: 8 },
+  clientAmount: { fontSize: 15, fontWeight: '800', color: '#16A34A' },
+  clientDate: { fontSize: 12, color: '#A1A1AA', flex: 1 },
+  paidBadge: {
+    fontSize: 11, color: '#EA6C0A', fontWeight: '700',
+    backgroundColor: '#431407', paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 8, borderWidth: 1, borderColor: '#F97316',
   },
-  secondRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  viewAllBtn: {
+    alignItems: 'center', paddingVertical: 10, marginTop: 4,
+    borderRadius: 10, borderWidth: 1, borderColor: '#F97316',
+    borderStyle: 'dashed',
   },
-  clientName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    flex: 1,
-    marginRight: 12,
-  },
-  amountText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#16A34A',
-  },
-  dateText: {
-    fontSize: 13,
-    color: theme.colors.text.secondary,
-    fontWeight: '500',
-    flex: 1,
-  },
-  paidText: {
-    fontSize: 11,
-    color: '#E55A2B',  // Naranja oscuro
-    fontWeight: '700',
-    backgroundColor: '#FFE5DC',  // Fondo naranja claro
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    textAlign: 'center',
-    borderWidth: 1,
-    borderColor: '#FF6B35',  // Borde naranja O2
-    shadowColor: '#FF6B35',
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
+  viewAllBtnText: { color: '#EA6C0A', fontSize: 13, fontWeight: '600' },
 });

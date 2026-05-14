@@ -1,33 +1,39 @@
 // src/constants/colors.js
 export const COLORS = {
   // Colores principales
-  primary: '#FF6B35',      // Naranja O2 (principal)
-  primaryDark: '#E55A2B',  // Naranja oscuro
-  primaryLight: '#FF8456', // Naranja claro
-  
-  // Colores secundarios
-  secondary: '#1A1A1A',    // Negro del fondo
-  white: '#FFFFFF',        // Blanco del texto "gym"
-  
+  primary: '#F97316',      // Naranja (principal)
+  primaryDark: '#EA6C0A',  // Naranja oscuro
+  primaryLight: '#FB923C', // Naranja claro
+
+  // Fondos oscuros
+  secondary: '#0F0F0F',
+  background: '#0F0F0F',
+  backgroundDark: '#0F0F0F',
+  card: '#1C1C1E',
+  cardBorder: '#2C2C2E',
+
+  white: '#FFFFFF',
+
   // Colores de estado
-  success: '#10B981',      // Verde (pagado)
-  warning: '#F59E0B',      // Amarillo (pendiente)
-  danger: '#EF4444',       // Rojo (vencido)
-  
-  // Grises
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray300: '#D1D5DB',
-  gray400: '#9CA3AF',
-  gray500: '#6B7280',
-  gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
-  gray900: '#111827',
-  
-  // Fondos
-  background: '#F9FAFB',
-  backgroundDark: '#1A1A1A',
-  card: '#FFFFFF',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+
+  // Grises (warm dark scale)
+  gray50: '#FAFAFA',
+  gray100: '#F4F4F5',
+  gray200: '#E4E4E7',
+  gray300: '#D4D4D8',
+  gray400: '#A1A1AA',
+  gray500: '#71717A',
+  gray600: '#52525B',
+  gray700: '#3F3F46',
+  gray800: '#27272A',
+  gray900: '#18181B',
+
+  // Texto
+  text: '#F5F5F5',
+  textSecondary: '#A1A1AA',
+  textLight: '#71717A',
+  border: '#2C2C2E',
 };

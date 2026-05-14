@@ -1,5 +1,4 @@
-// src/screens/Clients/ClientsScreen.js - CON VALIDACIONES ✅
-
+﻿// src/screens/Clients/ClientsScreen.js - CON WHATSAPP
 import React, { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -16,6 +15,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
 import { theme } from '../../constants/theme';
 
@@ -28,7 +28,6 @@ export default function ClientsScreen({ navigation, route }) {
   const [statusFilter, setStatusFilter] = useState(route.params?.status || '');
   const [showModal, setShowModal] = useState(false);
 
-  // 🔥 AUTO-REFRESH cuando la pantalla toma foco
   useFocusEffect(
     React.useCallback(() => {
       console.log('🔄 Pantalla Clientes enfocada - Recargando datos...');
@@ -36,7 +35,6 @@ export default function ClientsScreen({ navigation, route }) {
     }, [statusFilter, searchTerm])
   );
 
-  // Actualizar filtro cuando cambien los parámetros de navegación
   useEffect(() => {
     if (route.params?.status !== undefined) {
       setStatusFilter(route.params.status);
@@ -45,28 +43,21 @@ export default function ClientsScreen({ navigation, route }) {
 
   const loadClients = async () => {
     try {
-      const clientesList = await clients.getAll();
-      
-      // Aplicar filtros
-      let filteredClients = clientesList;
-      
-      // Filtro por estado de pago
+      const all = await clients.getAll();
+      let filtered = all;
       if (statusFilter) {
-        filteredClients = filteredClients.filter(client => client.estadoPago === statusFilter);
+        filtered = filtered.filter(c => c.estadoPago === statusFilter);
       }
-      
-      // Filtro por búsqueda
       if (searchTerm) {
-        filteredClients = filteredClients.filter(client => 
-          client.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          client.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          client.documento.includes(searchTerm)
+        const q = searchTerm.toLowerCase();
+        filtered = filtered.filter(c =>
+          c.nombre.toLowerCase().includes(q) ||
+          c.apellido.toLowerCase().includes(q) ||
+          c.email.toLowerCase().includes(q) ||
+          c.documento.includes(searchTerm)
         );
       }
-      
-      setClients(filteredClients);
-      console.log(`✅ ${filteredClients.length} clientes cargados`);
+      setClients(filtered);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron cargar los clientes');
     } finally {
@@ -87,8 +78,8 @@ export default function ClientsScreen({ navigation, route }) {
 
   const markAsPaid = async (clientId) => {
     Alert.alert(
-      'Confirmar Pago',
-      '¿Marcar como pagado?',
+      'Confirmar Abono',
+      '¿Marcar como abonado?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -96,8 +87,8 @@ export default function ClientsScreen({ navigation, route }) {
           onPress: async () => {
             try {
               await clients.updatePaymentStatus(clientId, 'pagado');
-              Alert.alert('Éxito', 'Cliente marcado como pagado');
-              loadClients(); // Recargar lista
+              Alert.alert('Éxito', 'Cliente marcado como abonado');
+              loadClients();
             } catch (error) {
               Alert.alert('Error', 'No se pudo actualizar el estado');
             }
@@ -109,9 +100,9 @@ export default function ClientsScreen({ navigation, route }) {
 
   const getStatusBadge = (status) => {
     const config = {
-      pagado: { label: '✅ Al día', color: '#10B981', bgColor: '#D1FAE5' },
-      vencido: { label: '⚠️ Vencido', color: '#EF4444', bgColor: '#FEE2E2' },
-      pendiente: { label: '⏳ Pendiente', color: '#F59E0B', bgColor: '#FEF3C7' },
+      pagado: { label: 'Al día', icon: 'checkmark-circle', color: '#10B981', bgColor: '#052E16' },
+      vencido: { label: 'Vencido', icon: 'alert-circle', color: '#EF4444', bgColor: '#450A0A' },
+      pendiente: { label: 'Pendiente', icon: 'time', color: '#F59E0B', bgColor: '#422006' },
     };
     return config[status] || config.pendiente;
   };
@@ -131,52 +122,60 @@ export default function ClientsScreen({ navigation, route }) {
           }
           navigation.navigate('ClientDetail', { clientId: idToUse });
         }}
-        activeOpacity={0.7}
+        activeOpacity={0.75}
       >
+        {/* Header */}
         <View style={styles.cardHeader}>
-          <View style={[styles.avatarCircle, { 
-            borderColor: badge.color,
-            borderWidth: 2
-          }]}>
+          <View style={[styles.avatarCircle, { borderColor: badge.color }]}>
             <Text style={styles.avatarInitial}>
               {item.nombre.charAt(0)}{item.apellido.charAt(0)}
             </Text>
           </View>
 
           <View style={styles.clientInfo}>
-            <Text style={styles.clientName}>
-              {item.nombre} {item.apellido}
-            </Text>
-            <Text style={styles.clientEmail}>{item.email}</Text>
-            <Text style={styles.clientDoc}>DNI: {item.documento}</Text>
+            <Text style={styles.clientName}>{item.nombre} {item.apellido}</Text>
+            <View style={styles.clientMeta}>
+              <View style={[styles.planTag, { backgroundColor: badge.bgColor }]}>
+                <Text style={[styles.planTagText, { color: badge.color }]}>
+                  {(item.tipoPlan || 'mensual').toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.clientDoc}>DNI {item.documento}</Text>
+            </View>
           </View>
 
-          <View style={[styles.statusBadge, { backgroundColor: badge.bgColor }]}>
-            <Text style={[styles.statusText, { color: badge.color }]}>
-              {badge.label}
-            </Text>
+          <View style={[styles.statusBadge, { backgroundColor: badge.bgColor, borderColor: badge.color + '60' }]}>
+            <Ionicons name={badge.icon} size={12} color={badge.color} />
+            <Text style={[styles.statusText, { color: badge.color }]}>{badge.label}</Text>
           </View>
         </View>
 
+        {/* Divider */}
+        <View style={[styles.cardDivider, { backgroundColor: badge.color + '25' }]} />
+
+        {/* Footer */}
         <View style={styles.cardFooter}>
-          <View style={styles.amountContainer}>
-            <Text style={styles.amountLabel}>Cuota mensual</Text>
-            <Text style={styles.amountValue}>${item.montoMensual}</Text>
+          <View>
+            <Text style={styles.amountLabel}>Cuota</Text>
+            <Text style={styles.amountValue}>${item.montoMensual?.toLocaleString()}</Text>
           </View>
 
-          {item.estadoPago !== 'pagado' && (
+          {item.estadoPago !== 'pagado' ? (
             <TouchableOpacity
-              style={[styles.payButton, { 
-                borderColor: badge.color,
-                borderWidth: 2
-              }]}
+              style={[styles.payButton, { backgroundColor: badge.color + '18', borderColor: badge.color }]}
               onPress={(e) => {
                 e.stopPropagation();
                 markAsPaid(item.id || item._id);
               }}
             >
-              <Text style={styles.payButtonText}>💰 Pagar</Text>
+              <Ionicons name="checkmark-circle-outline" size={14} color={badge.color} style={{ marginRight: 4 }} />
+              <Text style={[styles.payButtonText, { color: badge.color }]}>Abonar</Text>
             </TouchableOpacity>
+          ) : (
+            <View style={styles.paidIndicator}>
+              <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
+              <Text style={styles.paidText}>Al día</Text>
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -188,62 +187,37 @@ export default function ClientsScreen({ navigation, route }) {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search" size={18} color="#71717A" />
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar cliente..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#71717A"
             value={searchTerm}
             onChangeText={setSearchTerm}
             onSubmitEditing={handleSearch}
           />
         </View>
+        <TouchableOpacity style={styles.importBtn} onPress={() => navigation.navigate('ImportContacts')}>
+          <Ionicons name="person-add-outline" size={20} color="#F97316" />
+        </TouchableOpacity>
       </View>
 
-      {/* Filters */}
-      <View style={styles.filterContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-          style={styles.filterScroll}
-        >
+      {/* Navigation Tabs */}
+      <View style={styles.navContainer}>
+        {[
+          { label: 'Todos', value: '' },
+          { label: 'Al día', value: 'pagado' },
+          { label: 'Vencidos', value: 'vencido' },
+          { label: 'Pendientes', value: 'pendiente' },
+        ].map(({ label, value }) => (
           <TouchableOpacity
-            style={[styles.filterChip, statusFilter === '' && styles.filterChipActive]}
-            onPress={() => setStatusFilter('')}
+            key={value}
+            style={[styles.navChip, statusFilter === value && styles.navChipActive]}
+            onPress={() => setStatusFilter(value)}
           >
-            <Text style={[styles.filterText, statusFilter === '' && styles.filterTextActive]}>
-              📊 Todos
-            </Text>
+            <Text style={[styles.navText, statusFilter === value && styles.navTextActive]}>{label}</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'pagado' && styles.filterChipActive]}
-            onPress={() => setStatusFilter('pagado')}
-          >
-            <Text style={[styles.filterText, statusFilter === 'pagado' && styles.filterTextActive]}>
-              ✅ Al día
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'vencido' && styles.filterChipActive]}
-            onPress={() => setStatusFilter('vencido')}
-          >
-            <Text style={[styles.filterText, statusFilter === 'vencido' && styles.filterTextActive]}>
-              ⚠️ Vencidos
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, statusFilter === 'pendiente' && styles.filterChipActive]}
-            onPress={() => setStatusFilter('pendiente')}
-          >
-            <Text style={[styles.filterText, statusFilter === 'pendiente' && styles.filterTextActive]}>
-              🕐 Pendientes
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
+        ))}
       </View>
 
       {/* Client List */}
@@ -257,7 +231,7 @@ export default function ClientsScreen({ navigation, route }) {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>🏋️</Text>
+            <Ionicons name="barbell-outline" size={64} color="#3F3F46" style={{ marginBottom: 16 }} />
             <Text style={styles.emptyText}>No hay clientes</Text>
           </View>
         }
@@ -268,7 +242,7 @@ export default function ClientsScreen({ navigation, route }) {
         style={styles.fabButton}
         onPress={() => setShowModal(true)}
       >
-        <Text style={styles.fabIcon}>➕</Text>
+        <Ionicons name="add" size={32} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* Create Client Modal */}
@@ -277,16 +251,13 @@ export default function ClientsScreen({ navigation, route }) {
         onClose={() => setShowModal(false)}
         onSuccess={() => {
           setShowModal(false);
-          loadClients(); // 🔥 Recargar lista automáticamente
+          loadClients();
         }}
       />
     </View>
   );
 }
 
-// ============================================
-// 🆕 MODAL CON VALIDACIONES COMPLETAS
-// ============================================
 function CreateClientModal({ visible, onClose, onSuccess }) {
   const { clients } = useDatabase();
   const [formData, setFormData] = useState({
@@ -300,21 +271,12 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
 
-  // ============================================
-  // ✅ VERSIÓN CON TODAS LAS VALIDACIONES
-  // ============================================
   const handleSubmit = async () => {
-    // ========================================
-    // VALIDACIÓN 1: Campos obligatorios
-    // ========================================
     if (!formData.nombre || !formData.apellido || !formData.email || !formData.documento) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 2: Longitud mínima de nombres
-    // ========================================
     if (formData.nombre.trim().length < 2) {
       Alert.alert('Error', 'El nombre debe tener al menos 2 caracteres');
       return;
@@ -325,10 +287,7 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 3: Nombres sin números
-    // ========================================
-    const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ'\s]+$/;
     if (!nombreRegex.test(formData.nombre.trim())) {
       Alert.alert('Error', 'El nombre no puede contener números o caracteres especiales');
       return;
@@ -339,27 +298,18 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 4: Formato de email
-    // ========================================
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       Alert.alert('Error', 'Por favor ingresa un email válido');
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 5: DNI exactamente 8 dígitos
-    // ========================================
     const dniRegex = /^\d{8}$/;
     if (!dniRegex.test(formData.documento)) {
       Alert.alert('Error', 'El DNI debe tener exactamente 8 dígitos numéricos');
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 6: Monto válido
-    // ========================================
     const monto = parseFloat(formData.montoMensual);
     if (isNaN(monto) || monto <= 0) {
       Alert.alert('Error', 'El monto debe ser mayor a 0');
@@ -376,37 +326,44 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       return;
     }
 
-    // ========================================
-    // VALIDACIÓN 7: Teléfono (si se ingresó)
-    // ========================================
     if (formData.telefono.trim()) {
       let telefono = formData.telefono.trim();
       
-      // Si no empieza con +54, agregarlo automáticamente
       if (!telefono.startsWith('+54')) {
-        // Limpiar el número de caracteres no numéricos
         telefono = telefono.replace(/[^0-9]/g, '');
-        // Agregar +54 automáticamente
         telefono = '+54' + telefono;
       }
       
-      // Validar formato final: +54 seguido de al menos 9 dígitos
       const telefonoRegex = /^\+54\d{9,}$/;
       if (!telefonoRegex.test(telefono)) {
         Alert.alert('Error', 'El teléfono debe tener formato +54 seguido de al menos 9 dígitos');
         return;
       }
       
-      // Actualizar el teléfono formateado
       formData.telefono = telefono;
     }
 
-    // ========================================
-    // VALIDACIÓN 8 & 9: Email y DNI únicos (usando funciones del servicio)
-    // ========================================
+    if (formData.email) {
+      Alert.alert(
+        '✉️ Email Registrado',
+        `Este email se usará para:\n\n` +
+        `• Enviar invitaciones de Google Calendar\n` +
+        `• Notificar cambios en rutinas\n` +
+        `• Recordatorios de entrenamiento\n\n` +
+        `Verifica que sea correcto:\n${formData.email}`,
+        [
+          { text: 'Corregir', style: 'cancel' },
+          { text: 'Es Correcto', onPress: () => crearCliente() }
+        ]
+      );
+    } else {
+      crearCliente();
+    }
+  };
+
+  const crearCliente = async () => {
     setLoading(true);
     try {
-      // Usar las funciones de validación del servicio que manejan correctamente los soft deletes
       const isEmailUnique = await clients.validateUniqueEmail(formData.email.toLowerCase().trim());
       if (!isEmailUnique) {
         Alert.alert('Error', 'Ya existe un cliente activo con ese email');
@@ -421,9 +378,6 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
         return;
       }
 
-      // ========================================
-      // ✅ TODAS LAS VALIDACIONES PASADAS - CREAR CLIENTE
-      // ========================================
       await clients.create({
         ...formData,
         nombre: formData.nombre.trim(),
@@ -435,7 +389,6 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
 
       Alert.alert('Éxito', '✅ Cliente creado exitosamente');
       
-      // Reset form
       setFormData({
         nombre: '',
         apellido: '',
@@ -450,7 +403,6 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
     } catch (error) {
       console.error('Error creando cliente:', error);
       
-      // Manejar errores específicos de SQLite
       let errorMessage = 'Error al crear cliente';
       if (error.message.includes('UNIQUE constraint failed: clientes.email')) {
         errorMessage = 'Ya existe un cliente con ese email';
@@ -473,101 +425,148 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
       transparent={true}
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <TouchableOpacity 
         style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
       >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Nuevo Cliente</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.modalClose}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.formContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Nombre *"
-              value={formData.nombre}
-              onChangeText={(text) => setFormData({ ...formData, nombre: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Apellido *"
-              value={formData.apellido}
-              onChangeText={(text) => setFormData({ ...formData, apellido: text })}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Email *"
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="DNI * (8 dígitos)"
-              value={formData.documento}
-              onChangeText={(text) => setFormData({ ...formData, documento: text })}
-              keyboardType="numeric"
-              maxLength={8}
-            />
-
-            {/* Selector de Plan */}
-            <View style={styles.planSelector}>
-              <Text style={styles.planLabel}>Tipo de Plan *</Text>
-              <View style={styles.planOptions}>
-                {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
-                  <TouchableOpacity
-                    key={plan}
-                    style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
-                    onPress={() => setFormData({ ...formData, tipoPlan: plan })}
-                  >
-                    <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
-                      {plan.charAt(0).toUpperCase() + plan.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalKeyboardView}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Nuevo Cliente</Text>
+                <TouchableOpacity
+                  onPress={onClose}
+                  style={styles.modalCloseButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={22} color="#A1A1AA" />
+                </TouchableOpacity>
               </View>
+
+              <ScrollView 
+                style={styles.formContainer}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Información Personal */}
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Información Personal</Text>
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nombre *"
+                    value={formData.nombre}
+                    onChangeText={(text) => setFormData({ ...formData, nombre: text })}
+                    placeholderTextColor="#71717A"
+                  />
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Apellido *"
+                    value={formData.apellido}
+                    onChangeText={(text) => setFormData({ ...formData, apellido: text })}
+                    placeholderTextColor="#71717A"
+                  />
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="DNI * (8 dígitos)"
+                    value={formData.documento}
+                    onChangeText={(text) => {
+                      const numbersOnly = text.replace(/[^0-9]/g, '');
+                      if (numbersOnly.length <= 8) {
+                        setFormData({ ...formData, documento: numbersOnly });
+                      }
+                    }}
+                    keyboardType="numeric"
+                    maxLength={8}
+                    placeholderTextColor="#71717A"
+                  />
+                  
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email *"
+                    value={formData.email}
+                    onChangeText={(text) => setFormData({ ...formData, email: text })}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+
+                {/* Información de Contacto */}
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Contacto</Text>
+                  
+                  <View style={styles.phoneContainer}>
+                    <Text style={styles.phonePrefix}>+54</Text>
+                    <TextInput
+                      style={[styles.input, styles.phoneInput]}
+                      placeholder="Número de celular (ej: 1123456789)"
+                      value={formData.telefono.replace('+54', '')}
+                      onChangeText={(text) => {
+                        const numbersOnly = text.replace(/[^0-9]/g, '');
+                        setFormData({ ...formData, telefono: numbersOnly ? '+54' + numbersOnly : '' });
+                      }}
+                      keyboardType="phone-pad"
+                      maxLength={15}
+                      placeholderTextColor="#71717A"
+                    />
+                  </View>
+                </View>
+
+                {/* Información del Plan */}
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Plan y Cuota</Text>
+                  
+                  <View style={styles.planSelector}>
+                    <Text style={styles.planLabel}>Tipo de Plan *</Text>
+                    <View style={styles.planOptions}>
+                      {['diario', 'semanal', 'quincenal', 'mensual', 'anual'].map((plan) => (
+                        <TouchableOpacity
+                          key={plan}
+                          style={[styles.planChip, formData.tipoPlan === plan && styles.planChipActive]}
+                          onPress={() => setFormData({ ...formData, tipoPlan: plan })}
+                        >
+                          <Text style={[styles.planChipText, formData.tipoPlan === plan && styles.planChipTextActive]}>
+                            {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Cuota Mensual *"
+                    value={formData.montoMensual}
+                    onChangeText={(text) => {
+                      const numbersOnly = text.replace(/[^0-9]/g, '');
+                      setFormData({ ...formData, montoMensual: numbersOnly });
+                    }}
+                    keyboardType="numeric"
+                    placeholderTextColor="#71717A"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                  onPress={handleSubmit}
+                  disabled={loading}
+                >
+                  <Text style={styles.submitButtonText}>
+                    {loading ? 'Validando...' : 'Crear Cliente'}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-
-            <View style={styles.phoneContainer}>
-              <Text style={styles.phonePrefix}>+54</Text>
-              <TextInput
-                style={[styles.input, styles.phoneInput]}
-                placeholder="Número de celular (ej: 1123456789)"
-                value={formData.telefono.replace('+54', '')}
-                onChangeText={(text) => {
-                  const numbersOnly = text.replace(/[^0-9]/g, '');
-                  setFormData({ ...formData, telefono: numbersOnly ? '+54' + numbersOnly : '' });
-                }}
-                keyboardType="phone-pad"
-                maxLength={15}
-              />
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Monto Mensual *"
-              value={formData.montoMensual}
-              onChangeText={(text) => setFormData({ ...formData, montoMensual: text })}
-              keyboardType="numeric"
-            />
-
-            <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              <Text style={styles.submitButtonText}>
-                {loading ? 'Validando...' : 'Crear Cliente'}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </TouchableOpacity>
     </Modal>
   );
 }
@@ -575,173 +574,169 @@ function CreateClientModal({ visible, onClose, onSuccess }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },
   searchContainer: {
-    padding: 16,
-    backgroundColor: theme.colors.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.card,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    gap: 10,
   },
   searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#2C2C2E',
     borderRadius: 12,
     paddingHorizontal: 12,
+    gap: 8,
   },
-  searchIcon: { fontSize: 20, marginRight: 8 },
-  searchInput: { flex: 1, padding: 12, fontSize: 16, color: '#1F2937' },
-  filterContainer: { 
-    backgroundColor: theme.colors.white,
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    paddingVertical: 16,
-  },
-  filterScroll: {
-    paddingHorizontal: 16,
-  },
-  filterScrollContent: {
-    paddingHorizontal: 0,
-    gap: 12,
-    flexDirection: 'row',
+  searchInput: { flex: 1, paddingVertical: 10, fontSize: 15, color: '#F5F5F5' },
+  importBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#431407',
+    borderWidth: 1,
+    borderColor: '#F97316',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  filterChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
-    shadowColor: '#64748B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    minWidth: 100,
+  
+  // Navigation Tabs
+  navContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1C1C1E',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
   },
-  filterChipActive: { 
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primaryDark,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-    transform: [{ scale: 1.05 }],
-  },
-  filterText: { 
-    color: '#64748B', 
-    fontWeight: '700', 
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  filterTextActive: { 
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  listContainer: { padding: 16 },
-  clientCard: {
-    backgroundColor: theme.colors.white,
+  navChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 6,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.primary,
+    backgroundColor: '#2C2C2E',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  navChipActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
+  },
+  navText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#71717A',
+  },
+  navTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+
+  listContainer: { padding: 12 },
+  clientCard: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F97316',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   avatarCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: theme.colors.primary,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#2C2C2E',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    borderWidth: 2,
   },
-  avatarInitial: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  avatarInitial: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   clientInfo: { flex: 1 },
-  clientName: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text.primary, marginBottom: 2 },
-  clientEmail: { fontSize: 13, color: theme.colors.text.secondary, marginBottom: 2 },
-  clientDoc: { fontSize: 12, color: theme.colors.text.light },
-  statusBadge: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 6, 
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+  clientName: { fontSize: 15, fontWeight: '700', color: '#F5F5F5', marginBottom: 5 },
+  clientMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  planTag: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  statusText: { fontSize: 11, fontWeight: 'bold' },
+  planTagText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  clientDoc: { fontSize: 12, color: '#71717A' },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  cardDivider: { height: 1, marginBottom: 10 },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingTop: 12,
   },
-  amountContainer: { flex: 1 },
-  amountLabel: { fontSize: 12, color: '#6B7280', marginBottom: 4 },
-  amountValue: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
+  amountLabel: { fontSize: 11, color: '#71717A', marginBottom: 2 },
+  amountValue: { fontSize: 17, fontWeight: '800', color: '#F5F5F5' },
   payButton: {
-    backgroundColor: '#10B981',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: 10,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1.5,
   },
-  payButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  payButtonText: { fontWeight: '700', fontSize: 13 },
+  paidIndicator: { flexDirection: 'row', alignItems: 'center' },
+  paidText: { fontSize: 13, color: '#10B981', fontWeight: '600' },
   emptyContainer: { alignItems: 'center', paddingTop: 60 },
-  emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, color: '#6B7280' },
+  emptyText: { fontSize: 18, color: '#A1A1AA' },
   fabButton: {
     position: 'absolute',
     right: 20,
     bottom: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.colors.primary, // Naranja O2
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
-    borderWidth: 3,
-    borderColor: theme.colors.white,
-    transform: [{ scale: 1 }],
-  },
-  fabIcon: { 
-    fontSize: 30, 
-    color: '#fff',
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  modalKeyboardView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   modalContent: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: theme.colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    maxHeight: '90%',
     paddingBottom: 40,
   },
   modalHeader: {
@@ -750,19 +745,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#2C2C2E',
   },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.colors.text.primary },
-  modalClose: { fontSize: 28, color: theme.colors.text.secondary },
+  modalCloseButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#2C2C2E',
+    minWidth: 40,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   formContainer: { padding: 20 },
+  sectionContainer: {
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F5F5F5',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   input: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
+    color: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   phoneContainer: {
     flexDirection: 'row',
@@ -770,26 +793,36 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   phonePrefix: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#2C2C2E',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#3B82F6',
+    color: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#2C2C2E',
     marginRight: 8,
+    minWidth: 60,
+    textAlign: 'center',
   },
   phoneInput: {
     flex: 1,
     marginBottom: 0,
   },
   submitButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#F97316',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     marginTop: 8,
+    marginBottom: 30,
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 2,
+    borderColor: '#EA6C0A',
   },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
@@ -799,7 +832,7 @@ const styles = StyleSheet.create({
   planLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#F5F5F5',
     marginBottom: 12,
   },
   planOptions: {
@@ -808,21 +841,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   planChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 2,
-    borderColor: '#F3F4F6',
+    backgroundColor: '#2C2C2E',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
   },
   planChipActive: {
-    backgroundColor: '#FFF3ED',
+    backgroundColor: '#431407',
     borderColor: theme.colors.primary,
   },
   planChipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#A1A1AA',
   },
   planChipTextActive: {
     color: theme.colors.primary,

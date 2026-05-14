@@ -1,4 +1,4 @@
-// src/screens/Routines/GroupDetailScreen.js
+﻿// src/screens/Routines/GroupDetailScreen.js - CON WHATSAPP
 import React, { useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -11,46 +11,31 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
-import { calendarAPI } from '../../api/axios';
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
-
-// Importar la instancia configurada de axios
-const axiosInstance = axios.create({
-  baseURL: 'http://192.168.0.83:3000/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-});
-
-// Interceptor para agregar token automáticamente
-axiosInstance.interceptors.request.use(
-  async (config) => {
-    const token = await SecureStore.getItemAsync('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔐 Token agregado a la petición del grupo');
-    } else {
-      console.log('❌ No hay token disponible para el grupo');
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import whatsappExportService from '../../services/whatsappExportService';
 
 export default function GroupDetailScreen({ route, navigation }) {
   const { group: initialGroup } = route.params;
   const { routines, clients } = useDatabase();
-  
+
   const [group, setGroup] = useState(initialGroup);
   const [loading, setLoading] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [availableClients, setAvailableClients] = useState([]);
-  const [uploadingCalendar, setUploadingCalendar] = useState(false);
+  const [expandedClients, setExpandedClients] = useState(new Set());
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState('');
+  const [showEjercicios, setShowEjercicios] = useState(false);
+
+  const toggleExpand = (clientId) => {
+    setExpandedClients(prev => {
+      const next = new Set(prev);
+      if (next.has(clientId)) next.delete(clientId);
+      else next.add(clientId);
+      return next;
+    });
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -60,14 +45,49 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   const refreshGroup = async () => {
     try {
+      console.log('🔄 Actualizando datos del grupo...');
+
       const groups = await routines.getGrouped();
       const updatedGroup = groups.find(g => g.nombre === group.nombre);
-      
+
       if (updatedGroup) {
+        console.log(`✅ Grupo encontrado: ${updatedGroup.nombre}`);
+        console.log(`📊 Clientes en grupo: ${updatedGroup.clientes?.length || 0}`);
+
+        // 🔥 CRÍTICO: Cargar información completa de cada cliente incluyendo teléfono
+        if (updatedGroup.clientes && updatedGroup.clientes.length > 0) {
+          const clientesCompletos = await Promise.all(
+            updatedGroup.clientes.map(async (cliente) => {
+              try {
+                const clienteId = cliente.id || cliente._id;
+                const clienteCompleto = await clients.getById(clienteId);
+
+                if (clienteCompleto) {
+                  console.log(`📱 Cliente ${clienteCompleto.nombre}: ${clienteCompleto.telefono || 'SIN TELÉFONO'}`);
+                  return clienteCompleto;
+                }
+                return cliente;
+              } catch (error) {
+                console.warn(`⚠️ Error cargando cliente ${cliente.nombre}:`, error);
+                return cliente;
+              }
+            })
+          );
+
+          updatedGroup.clientes = clientesCompletos;
+
+          // Contar clientes con teléfono
+          const conTelefono = clientesCompletos.filter(c => c.telefono).length;
+          console.log(`📞 Clientes con teléfono: ${conTelefono}/${clientesCompletos.length}`);
+        }
+
         setGroup(updatedGroup);
+      } else {
+        console.warn('⚠️ Grupo no encontrado en la lista actualizada');
       }
     } catch (error) {
-      console.error('Error refreshing group:', error);
+      console.error('❌ Error refreshing group:', error);
+      Alert.alert('Error', 'No se pudieron actualizar los datos del grupo');
     }
   };
 
@@ -75,17 +95,16 @@ export default function GroupDetailScreen({ route, navigation }) {
     try {
       setLoading(true);
       console.log('🔄 Cargando clientes para modal...');
-      
+
       const allClients = await clients.getAll();
       console.log('✅ Clientes cargados:', allClients.length);
-      
-      // Filtrar clientes que NO están en el grupo (manejo seguro de clientes)
+
       const clientsInGroup = (group.clientes || []).map(c => c.id || c._id || c.clienteId);
       const filtered = allClients.filter(c => {
         const clientId = c.id || c._id;
         return clientId && !clientsInGroup.includes(clientId);
       });
-      
+
       console.log('✅ Clientes disponibles:', filtered.length);
       setAvailableClients(filtered);
       setShowAddClientModal(true);
@@ -100,15 +119,14 @@ export default function GroupDetailScreen({ route, navigation }) {
   const addClientToGroup = async (clientId) => {
     try {
       console.log('🔄 Agregando cliente al grupo:', clientId);
-      
-      // Obtener todas las rutinas del grupo para usar como plantilla
+
       const allRoutines = await routines.getAll();
       console.log('✅ Rutinas cargadas:', allRoutines.length);
-      
-      const templateRoutine = allRoutines.find(r => 
+
+      const templateRoutine = allRoutines.find(r =>
         r.nombre === group.nombre && r.clienteId !== null
       );
-      
+
       if (!templateRoutine) {
         Alert.alert('Error', 'No se encontró la plantilla del grupo');
         return;
@@ -116,11 +134,9 @@ export default function GroupDetailScreen({ route, navigation }) {
 
       console.log('✅ Plantilla encontrada:', templateRoutine.id);
 
-      // Obtener los ejercicios de la rutina plantilla
       const templateWithExercises = await routines.getById(templateRoutine.id);
       console.log('✅ Ejercicios cargados:', templateWithExercises.ejercicios?.length || 0);
 
-      // Crear una nueva rutina para el cliente usando la plantilla completa
       const newRoutineData = {
         nombre: templateWithExercises.nombre,
         descripcion: templateWithExercises.descripcion,
@@ -135,7 +151,7 @@ export default function GroupDetailScreen({ route, navigation }) {
 
       const result = await routines.create(clientId, newRoutineData);
       console.log('✅ Rutina creada para cliente:', result.id);
-      
+
       Alert.alert('Éxito', 'Cliente agregado al grupo');
       setShowAddClientModal(false);
       refreshGroup();
@@ -156,12 +172,11 @@ export default function GroupDetailScreen({ route, navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Buscar y eliminar la rutina específica de este cliente usando SQLite
               const allRoutines = await routines.getAll();
-              const routineToDelete = allRoutines.find(r => 
+              const routineToDelete = allRoutines.find(r =>
                 r.nombre === group.nombre && (r.clienteId === cliente.id || r.clienteId === cliente._id)
               );
-              
+
               if (routineToDelete) {
                 await routines.delete(routineToDelete.id);
                 Alert.alert('Éxito', 'Cliente quitado del grupo');
@@ -190,15 +205,13 @@ export default function GroupDetailScreen({ route, navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Obtener todas las rutinas del grupo usando SQLite
               const allRoutines = await routines.getAll();
               const routinesToDelete = allRoutines.filter(r => r.nombre === group.nombre);
-              
-              // Eliminar todas las rutinas del grupo
+
               for (const routine of routinesToDelete) {
                 await routines.delete(routine.id);
               }
-              
+
               Alert.alert('Éxito', 'Grupo eliminado', [
                 { text: 'OK', onPress: () => navigation.goBack() }
               ]);
@@ -212,144 +225,133 @@ export default function GroupDetailScreen({ route, navigation }) {
     );
   };
 
-  const subirTodoACalendar = async () => {
-    // Verificar si hay clientes en el grupo
-    if (!group.clientes || group.clientes.length === 0) {
-      if (group.cantidad > 0) {
-        Alert.alert(
-          'Subir a Google Calendar',
-          `Detectamos ${group.cantidad} cliente(s) en este grupo pero necesitamos obtener sus datos.\n\n¿Continuar con la subida usando el ID del grupo?`,
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Continuar',
-              onPress: () => subirPorGrupo()
-            }
-          ]
-        );
-        return;
-      } else {
+  // ============================================
+  // 📱 FUNCIÓN PARA ENVIAR DIFUSIÓN
+  // ============================================
+  const enviarDifusionGrupo = async () => {
+    try {
+      console.log('📱 === INICIO ENVÍO DIFUSIÓN ===');
+      console.log('📊 Grupo actual:', group.nombre);
+      console.log('👥 Total clientes:', group.clientes?.length || 0);
+
+      if (!group.clientes || group.clientes.length === 0) {
         Alert.alert('Error', 'No hay clientes en este grupo');
         return;
       }
-    }
 
-    Alert.alert(
-      'Subir Todas a Google Calendar',
-      `¿Subir las ${group.cantidad} rutinas del grupo "${group.nombre}" a Google Calendar?\n\nSe crearán eventos para todos los clientes.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Subir Todo',
-          onPress: async () => {
-            setUploadingCalendar(true);
-            try {
-              console.log('🚀 Intentando subir grupo completo...');
-              
-              // Validar que el primer cliente existe y tiene id
-              const primerCliente = group.clientes[0];
-              if (!primerCliente || (!primerCliente.id && !primerCliente._id)) {
-                throw new Error('Cliente no válido en el grupo');
+      // 🔍 Debug detallado de cada cliente
+      console.log('\n🔍 Revisando clientes:');
+      group.clientes.forEach((c, index) => {
+        console.log(`\nCliente ${index + 1}:`);
+        console.log(`  - Nombre: ${c.nombre} ${c.apellido}`);
+        console.log(`  - Email: ${c.email}`);
+        console.log(`  - Teléfono: ${c.telefono || '❌ NO TIENE'}`);
+        console.log(`  - ID: ${c.id || c._id}`);
+      });
+
+      const clientesConTelefono = group.clientes.filter(c => {
+        const tieneTelefono = c.telefono && c.telefono.trim() !== '';
+        if (!tieneTelefono) {
+          console.log(`⚠️ ${c.nombre} ${c.apellido} NO tiene teléfono`);
+        }
+        return tieneTelefono;
+      });
+
+      console.log(`\n📞 Clientes CON teléfono: ${clientesConTelefono.length}`);
+      console.log(`❌ Clientes SIN teléfono: ${group.clientes.length - clientesConTelefono.length}`);
+
+      if (clientesConTelefono.length === 0) {
+        Alert.alert(
+          '📵 Sin Contactos',
+          `Ningún cliente de este grupo tiene teléfono registrado.\n\n` +
+          `Total clientes: ${group.clientes.length}\n` +
+          `Con teléfono: 0\n\n` +
+          `Verifica que los clientes tengan teléfonos válidos en formato +54.`,
+          [
+            {
+              text: 'Ver Clientes',
+              onPress: () => {
+                // Mostrar lista de clientes sin teléfono
+                const sinTelefono = group.clientes
+                  .filter(c => !c.telefono)
+                  .map(c => `• ${c.nombre} ${c.apellido}`)
+                  .join('\n');
+                Alert.alert('Clientes sin teléfono', sinTelefono || 'Ninguno');
               }
-              
-              // Preparar datos completos del grupo para el servidor
-              const groupData = {
-                nombre: group.nombre,
-                descripcion: group.descripcion,
-                tipo: group.tipo,
-                nivel: group.nivel,
-                duracionEstimada: group.duracionEstimada,
-                diasSemana: group.diasSemana,
-                ejercicios: group.ejercicios,
-                clientes: group.clientes,
-                cantidad: group.cantidad
-              };
-              
-              console.log('📤 Datos del grupo a enviar:', groupData);
-              
-              const response = await axiosInstance.post('/calendar/subir-grupo-completo', groupData);
-              
-              Alert.alert(
-                '✅ Éxito',
-                `${response.data.totalEventos} eventos creados en Google Calendar\n\n` +
-                `${response.data.detalles.map(d => `${d.rutina}: ${d.eventos || 0} eventos`).join('\n')}`
+            },
+            { text: 'OK' }
+          ]
+        );
+        return;
+      }
+
+      // Preparar info de rutina
+      const rutinaInfo = {
+        nombre: group.nombre,
+        tipo: group.tipo,
+        nivel: group.nivel,
+        duracionEstimada: group.duracionEstimada,
+        diasSemana: group.diasSemana || [],
+        ejercicios: group.ejercicios || []
+      };
+
+      console.log('\n📤 Preparando envío...');
+      console.log(`✅ ${clientesConTelefono.length} contactos válidos`);
+
+      Alert.alert(
+        '📱 Enviar Difusión',
+        `Se enviará la rutina "${group.nombre}" a:\n\n` +
+        clientesConTelefono.slice(0, 5).map(c => `• ${c.nombre} ${c.apellido}`).join('\n') +
+        (clientesConTelefono.length > 5 ? `\n... y ${clientesConTelefono.length - 5} más` : '') +
+        `\n\n✅ ${clientesConTelefono.length} cliente(s) con WhatsApp` +
+        (clientesConTelefono.length < group.clientes.length
+          ? `\n⚠️ ${group.clientes.length - clientesConTelefono.length} sin teléfono`
+          : ''
+        ),
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: '📤 Enviar Difusión',
+            onPress: () => {
+              console.log('✅ Usuario confirmó envío');
+              whatsappExportService.crearListaDifusion(
+                clientesConTelefono,
+                rutinaInfo
               );
-            } catch (error) {
-              console.error('❌ Error completo:', error);
-              console.error('❌ Error response:', error.response?.data);
-              
-              let errorMessage = 'No se pudieron subir las rutinas';
-              
-              if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-                errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en 192.168.0.83:3000';
-              } else if (error.response?.status === 500) {
-                errorMessage = `Error del servidor: ${error.response?.data?.error || 'Error interno del servidor'}`;
-              } else if (error.response?.data?.error) {
-                errorMessage = error.response.data.error;
-              }
-              
-              Alert.alert('❌ Error', errorMessage);
-            } finally {
-              setUploadingCalendar(false);
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error en enviarDifusionGrupo:', error);
+      Alert.alert('Error', `No se pudo enviar la difusión: ${error.message}`);
+    }
   };
 
-  const subirPorGrupo = async () => {
-    setUploadingCalendar(true);
-    try {
-      console.log('🚀 Enviando grupo completo al servidor...');
-      
-      // Preparar datos completos del grupo para el servidor
-      const groupData = {
+  // ============================================
+  // 📝 CREAR MENSAJE DE VISTA PREVIA
+  // ============================================
+  const crearMensajeRutinaGrupo = () => {
+    return whatsappExportService.crearMensajeDifusion(
+      group.clientes.filter(c => c.telefono),
+      {
         nombre: group.nombre,
-        descripcion: group.descripcion,
         tipo: group.tipo,
         nivel: group.nivel,
         duracionEstimada: group.duracionEstimada,
         diasSemana: group.diasSemana,
-        ejercicios: group.ejercicios,
-        clientes: group.clientes,
-        cantidad: group.cantidad
-      };
-      
-      console.log('📤 Datos del grupo a enviar:', groupData);
-      
-      const response = await axiosInstance.post('/calendar/subir-grupo-completo', groupData);
-      
-      Alert.alert(
-        '✅ Éxito',
-        `${response.data.data.eventosCreados} eventos creados en Google Calendar`
-      );
-    } catch (error) {
-      console.error('❌ Error completo:', error);
-      console.error('❌ Error response:', error.response?.data);
-      
-      let errorMessage = 'No se pudo subir la rutina';
-      
-      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        errorMessage = 'No se puede conectar al servidor. Verifica que esté ejecutándose en 192.168.0.83:3000';
-      } else if (error.response?.status === 500) {
-        errorMessage = `Error del servidor: ${error.response?.data?.error || 'Error interno del servidor'}`;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
+        ejercicios: group.ejercicios
       }
-      
-      Alert.alert('❌ Error', errorMessage);
-    } finally {
-      setUploadingCalendar(false);
-    }
+    );
   };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Volver</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={20} color="#F97316" />
+          <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{group.nombre}</Text>
         <View style={styles.headerBadges}>
@@ -365,28 +367,48 @@ export default function GroupDetailScreen({ route, navigation }) {
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity 
-          style={[styles.actionBtn, { backgroundColor: '#10B981', flex: 1 }]}
-          onPress={openAddClientModal}
-        >
-          <Text style={styles.actionBtnText}>+ Agregar Cliente</Text>
+        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnPrimary]} onPress={openAddClientModal}>
+          <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Agregar</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
-          onPress={subirTodoACalendar}
-          disabled={uploadingCalendar}
+
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnPreview]}
+          onPress={() => {
+            const mensaje = crearMensajeRutinaGrupo();
+            setPreviewMessage(mensaje);
+            setShowPreviewModal(true);
+          }}
         >
-          <Text style={styles.actionBtnText}>
-            {uploadingCalendar ? '⏳' : '📅'}
-          </Text>
+          <Ionicons name="eye-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Preview</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionBtn, { backgroundColor: '#EF4444' }]}
-          onPress={deleteGroup}
+
+        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={enviarDifusionGrupo}>
+          <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Difusión</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnEdit]}
+          onPress={() => {
+            Alert.alert(
+              'Editar Rutina',
+              `Esta acción actualizará la rutina para TODOS los ${group.cantidad} cliente(s) del grupo.\n\n¿Deseas continuar?`,
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Editar', onPress: () => navigation.navigate('CreateRoutine', { groupToEdit: group }) }
+              ]
+            );
+          }}
         >
-          <Text style={styles.actionBtnText}>🗑️</Text>
+          <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Editar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={deleteGroup}>
+          <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Eliminar</Text>
         </TouchableOpacity>
       </View>
 
@@ -395,62 +417,123 @@ export default function GroupDetailScreen({ route, navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Clientes ({group.cantidad})</Text>
 
-          
+
           {group.clientes?.length > 0 ? (
-            group.clientes.map((cliente, index) => (
-              <View key={cliente.id || cliente._id || cliente.clienteId || `client-${index}`} style={styles.clientCard}>
-                <View style={styles.clientAvatar}>
-                  <Text style={styles.clientAvatarText}>
-                    {cliente.nombre?.charAt(0)}{cliente.apellido?.charAt(0)}
-                  </Text>
+            group.clientes.map((cliente, index) => {
+              const clientId = cliente.id || cliente._id || cliente.clienteId || `client-${index}`;
+              const isExpanded = expandedClients.has(clientId);
+              return (
+                <View key={clientId} style={styles.clientCard}>
+                  {/* Fila principal compacta */}
+                  <View style={styles.clientRow}>
+                    <View style={styles.clientAvatar}>
+                      <Text style={styles.clientAvatarText}>
+                        {cliente.nombre?.charAt(0)}{cliente.apellido?.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.clientInfo}>
+                      <Text style={styles.clientName}>
+                        {cliente.nombre} {cliente.apellido}
+                      </Text>
+                      {cliente.telefono ? (
+                        <View style={styles.phoneRow}>
+                          <Ionicons name="call-outline" size={10} color="#25D366" />
+                          <Text style={styles.clientPhone}>{cliente.telefono}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.clientEmail}>{cliente.email}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.expandBtn}
+                      onPress={() => toggleExpand(clientId)}
+                    >
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={14}
+                        color={isExpanded ? '#F97316' : '#71717A'}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeClientFromGroup(cliente)}
+                    >
+                      <Ionicons name="trash-outline" size={13} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Detalle expandible */}
+                  {isExpanded && (
+                    <View style={styles.clientDetail}>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="calendar-outline" size={12} color="#71717A" />
+                        <Text style={styles.detailText}>
+                          {group.diasSemana?.length > 0
+                            ? group.diasSemana.map(d => d.slice(0, 3).toUpperCase()).join(' · ')
+                            : 'Sin días definidos'}
+                        </Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="timer-outline" size={12} color="#71717A" />
+                        <Text style={styles.detailText}>{group.duracionEstimada} min</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="barbell-outline" size={12} color="#71717A" />
+                        <Text style={styles.detailText}>{group.ejercicios?.length || 0} ejercicios</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
-                <View style={styles.clientInfo}>
-                  <Text style={styles.clientName}>
-                    {cliente.nombre} {cliente.apellido}
-                  </Text>
-                  <Text style={styles.clientEmail}>{cliente.email}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => removeClientFromGroup(cliente)}
-                >
-                  <Text style={styles.removeButtonText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))
+              );
+            })
           ) : (
             <Text style={styles.emptyText}>No hay clientes en este grupo</Text>
           )}
         </View>
 
         {/* Info de la Rutina */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Información de la Rutina</Text>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Duración estimada</Text>
-            <Text style={styles.infoValue}>⏱️ {group.duracionEstimada} minutos</Text>
+        <View style={styles.infoBar}>
+          <View style={styles.infoStat}>
+            <Ionicons name="timer-outline" size={14} color="#71717A" />
+            <Text style={styles.infoStatText}>{group.duracionEstimada} min</Text>
           </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Días de entrenamiento</Text>
-            <View style={styles.daysContainer}>
-              {group.diasSemana?.map((dia) => (
-                <View key={dia} style={styles.dayChip}>
-                  <Text style={styles.dayChipText}>{dia.slice(0, 3).toUpperCase()}</Text>
-                </View>
-              ))}
-            </View>
+          <View style={styles.infoStatDot} />
+          <View style={styles.infoStat}>
+            <Ionicons name="barbell-outline" size={14} color="#71717A" />
+            <Text style={styles.infoStatText}>{group.ejercicios?.length || 0} ejerc.</Text>
+          </View>
+          <View style={styles.infoStatDot} />
+          <View style={styles.infoStatDays}>
+            {group.diasSemana?.map((dia) => (
+              <View key={dia} style={styles.dayChip}>
+                <Text style={styles.dayChipText}>{dia.slice(0, 3).toUpperCase()}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
         {/* Ejercicios */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Ejercicios ({group.ejercicios?.length || 0})
-          </Text>
+          <TouchableOpacity
+            style={styles.sectionToggleRow}
+            onPress={() => setShowEjercicios(v => !v)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.sectionTitle}>
+                Ejercicios ({group.ejercicios?.length || 0})
+              </Text>
+            </View>
+            <View style={styles.toggleChip}>
+              <Text style={styles.toggleChipText}>{showEjercicios ? 'Ocultar' : 'Ver'}</Text>
+              <Ionicons
+                name={showEjercicios ? 'chevron-up' : 'chevron-down'}
+                size={13}
+                color="#F97316"
+              />
+            </View>
+          </TouchableOpacity>
 
-          {group.ejercicios?.sort((a, b) => a.orden - b.orden).map((ejercicio, index) => (
+          {showEjercicios && group.ejercicios?.sort((a, b) => a.orden - b.orden).map((ejercicio, index) => (
             <View key={ejercicio.id || ejercicio._id || `ejercicio-${index}`} style={styles.exerciseCard}>
               <View style={styles.exerciseNumber}>
                 <Text style={styles.exerciseNumberText}>{index + 1}</Text>
@@ -460,20 +543,67 @@ export default function GroupDetailScreen({ route, navigation }) {
                 <Text style={styles.exerciseDetails}>
                   {ejercicio.series}x{ejercicio.repeticiones} • {ejercicio.peso} • {ejercicio.descanso}
                 </Text>
-                <View style={[styles.grupoMuscular, { backgroundColor: getGrupoColor(ejercicio.grupoMuscular) }]}>
-                  <Text style={styles.grupoMuscularText}>{ejercicio.grupoMuscular}</Text>
+                <View style={[styles.grupoMuscular, { backgroundColor: getGrupoColor(ejercicio.grupoMuscular) + '22', borderColor: getGrupoColor(ejercicio.grupoMuscular) + '60', borderWidth: 1 }]}>
+                  <Text style={[styles.grupoMuscularText, { color: getGrupoColor(ejercicio.grupoMuscular) }]}>{ejercicio.grupoMuscular}</Text>
                 </View>
               </View>
             </View>
           ))}
         </View>
-
-        <View style={styles.warningBox}>
-          <Text style={styles.warningText}>
-            ⚠️ Para editar esta rutina, se actualizará para TODOS los {group.cantidad} clientes del grupo
-          </Text>
-        </View>
       </ScrollView>
+
+      {/* Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#3B82F622', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="eye-outline" size={16} color="#3B82F6" />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Vista Previa</Text>
+                  <Text style={{ fontSize: 11, color: '#71717A' }}>Mensaje que recibirán los clientes</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowPreviewModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color="#A1A1AA" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Burbuja de chat */}
+            <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.chatBubble}>
+                <Text style={styles.chatBubbleText}>{previewMessage}</Text>
+              </View>
+              <Text style={styles.previewNote}>
+                Este mensaje se enviará a {group.clientes?.filter(c => c.telefono).length || 0} cliente(s) con WhatsApp
+              </Text>
+            </ScrollView>
+
+            <View style={styles.previewFooter}>
+              <TouchableOpacity
+                style={styles.previewCancelBtn}
+                onPress={() => setShowPreviewModal(false)}
+              >
+                <Text style={styles.previewCancelText}>Cerrar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.previewSendBtn}
+                onPress={() => { setShowPreviewModal(false); enviarDifusionGrupo(); }}
+              >
+                <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" />
+                <Text style={styles.previewSendText}>Enviar Difusión</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Add Client Modal */}
       <Modal
@@ -486,8 +616,8 @@ export default function GroupDetailScreen({ route, navigation }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Agregar Cliente al Grupo</Text>
-              <TouchableOpacity onPress={() => setShowAddClientModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity onPress={() => setShowAddClientModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
 
@@ -525,7 +655,7 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#FF6B35'  // Naranja O2 para personalizado
+    personalizado: '#F97316'
   };
   return colors[tipo] || colors.personalizado;
 }
@@ -536,8 +666,7 @@ function getGrupoColor(grupo) {
     espalda: '#3B82F6',
     piernas: '#10B981',
     hombros: '#F59E0B',
-    brazos: '#8B5CF6',
-    abdominales: '#EC4899',
+    brazos: '#8B5CF6', abdominales: '#EC4899',
     cardio: '#F97316',
     fullbody: '#6B7280'
   };
@@ -545,292 +674,426 @@ function getGrupoColor(grupo) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { 
-    backgroundColor: '#1A1A1A',  // Negro O2
-    padding: 24, 
-    paddingTop: 48, 
-    borderBottomWidth: 3, 
-    borderBottomColor: '#FF6B35',  // Naranja O2
-    shadowColor: '#FF6B35',
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  header: {
+    backgroundColor: '#1A1A1A',
+    padding: 24,
+    paddingTop: 48,
+    borderBottomWidth: 3,
+    borderBottomColor: '#F97316',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  backButton: { 
-    fontSize: 16, 
-    color: '#FF6B35',  // Naranja O2
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
-    fontWeight: '600',
+    alignSelf: 'flex-start',
   },
-  headerTitle: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    color: '#FFFFFF',  // Blanco
-    marginBottom: 8 
+  backButtonText: {
+    fontSize: 16,
+    color: '#F97316',
+    fontWeight: '600',
+    marginLeft: 2,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8
   },
   headerBadges: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  badge: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 12, 
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     backgroundColor: '#6B7280',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  badgeText: { 
-    color: '#FFFFFF', 
-    fontSize: 11, 
-    fontWeight: 'bold', 
-    textTransform: 'uppercase' 
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase'
   },
-  headerSubtitle: { 
-    fontSize: 14, 
-    color: '#FF8456'  // Naranja claro
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#F97316'
   },
-  actions: { 
-    flexDirection: 'row', 
-    padding: 16, 
+  actions: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
   },
-  actionBtn: { 
-    padding: 14, 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    paddingHorizontal: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  actionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 4,
+  },
+  actionBtnPrimary: { backgroundColor: '#10B981' },
+  actionBtnPreview: { backgroundColor: '#3B82F6' },
+  actionBtnSecondary: { backgroundColor: '#25D366' },
+  actionBtnEdit: { backgroundColor: '#F59E0B' },
+  actionBtnDanger: { backgroundColor: '#EF4444' },
+  actionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  content: { flex: 1 },
+  section: {
+    backgroundColor: '#1C1C1E',
+    margin: 16,
+    marginTop: 0,
+    padding: 14,
+    borderRadius: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F97316',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#F5F5F5',
+    marginBottom: 0,
+  },
+  sectionToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  toggleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F9731622',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F9731640',
+  },
+  toggleChipText: {
+    fontSize: 11,
+    color: '#F97316',
+    fontWeight: '600',
+  },
+  clientCard: {
+    backgroundColor: '#1C1C1E',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    borderLeftWidth: 3,
+    borderLeftColor: '#F97316',
+  },
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clientAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#EA6C0A',
+  },
+  clientAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  clientInfo: { flex: 1 },
+  clientName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F5F5F5',
+  },
+  clientEmail: {
+    fontSize: 11,
+    color: '#71717A',
+    marginTop: 1,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 1,
+  },
+  clientPhone: {
+    fontSize: 11,
+    color: '#25D366',
+    fontWeight: '500',
+  },
+  expandBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  removeButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#450A0A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#7C2D12',
+  },
+  clientDetail: {
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+    marginTop: 8,
+    paddingTop: 8,
+    gap: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailText: {
+    fontSize: 11,
+    color: '#71717A',
+    fontWeight: '500',
+  },
+  infoBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  infoStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  infoStatText: {
+    fontSize: 12,
+    color: '#A1A1AA',
+    fontWeight: '500',
+  },
+  infoStatDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+  },
+  infoStatDays: {
+    flexDirection: 'row',
+    gap: 4,
+    flexWrap: 'wrap',
+  },
+  dayChip: {
+    backgroundColor: '#431407',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F97316',
+  },
+  dayChipText: {
+    color: '#EA6C0A',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  exerciseCard: {
+    flexDirection: 'row',
+    backgroundColor: '#0F0F0F',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F97316',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+  },
+  exerciseNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#EA6C0A',
+  },
+  exerciseNumberText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold'
+  },
+  exerciseContent: { flex: 1 },
+  exerciseName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F5F5F5',
+    marginBottom: 4
+  },
+  exerciseDetails: {
+    fontSize: 12,
+    color: '#A1A1AA',
+    marginBottom: 6
+  },
+  grupoMuscular: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  grupoMuscularText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(26, 26, 26, 0.7)',
+    justifyContent: 'flex-end'
+  },
+  modalContent: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+    borderTopWidth: 4,
+    borderTopColor: '#F97316',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: '#2C2C2E'
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#F5F5F5'
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalClientItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E'
+  },
+  modalClientName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F5F5F5',
+    marginBottom: 4
+  },
+  modalClientEmail: {
+    fontSize: 13,
+    color: '#A1A1AA'
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#A1A1AA',
+    fontSize: 14,
+    paddingVertical: 40
+  },
+  chatBubble: {
+    backgroundColor: '#25D36618',
+    borderWidth: 1,
+    borderColor: '#25D36630',
+    borderRadius: 16,
+    borderTopLeftRadius: 4,
+    padding: 14,
+    marginBottom: 12,
+  },
+  chatBubbleText: {
+    fontSize: 13,
+    color: '#E4E4E7',
+    lineHeight: 20,
+    fontFamily: 'monospace',
+  },
+  previewNote: {
+    fontSize: 11,
+    color: '#52525B',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  previewFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  previewCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#2C2C2E',
+    alignItems: 'center',
+  },
+  previewCancelText: {
+    color: '#A1A1AA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  previewSendBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#25D366',
+    shadowColor: '#25D366',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 6,
     elevation: 5,
   },
-  actionBtnText: { 
-    color: '#FFFFFF', 
-    fontSize: 14, 
-    fontWeight: 'bold' 
-  },
-  content: { flex: 1 },
-  section: { 
-    backgroundColor: '#FFFFFF', 
-    margin: 16, 
-    marginTop: 0, 
-    padding: 16, 
-    borderRadius: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',  // Naranja O2
-    borderWidth: 1,
-    borderColor: '#FFE5DC',
-    shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  sectionTitle: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    color: '#1A1A1A',  // Negro O2
-    marginBottom: 16 
-  },
-  clientCard: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFF5F2',  // Naranja muy suave
-    padding: 12, 
-    borderRadius: 12, 
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#FFD4C4',
-  },
-  clientAvatar: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    backgroundColor: '#FF6B35',  // Naranja O2
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#E55A2B',
-  },
-  clientAvatarText: { 
-    color: '#FFFFFF', 
-    fontSize: 14, 
-    fontWeight: 'bold' 
-  },
-  clientInfo: { flex: 1 },
-  clientName: { 
-    fontSize: 15, 
-    fontWeight: '600', 
-    color: '#1A1A1A'  // Negro O2
-  },
-  clientEmail: { 
-    fontSize: 12, 
-    color: '#6B7280', 
-    marginTop: 2 
-  },
-  removeButton: { 
-    width: 32, 
-    height: 32, 
-    borderRadius: 16, 
-    backgroundColor: '#FEE2E2', 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  removeButtonText: { 
-    color: '#DC2626', 
-    fontSize: 18, 
-    fontWeight: 'bold' 
-  },
-  infoRow: { marginBottom: 16 },
-  infoLabel: { 
-    fontSize: 14, 
-    color: '#6B7280', 
-    marginBottom: 8 
-  },
-  infoValue: { 
-    fontSize: 16, 
-    color: '#1A1A1A',  // Negro O2
-    fontWeight: '600' 
-  },
-  daysContainer: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  dayChip: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E55A2B',
-  },
-  dayChipText: { 
-    color: '#FFFFFF', 
-    fontSize: 11, 
-    fontWeight: 'bold' 
-  },
-  exerciseCard: { 
-    flexDirection: 'row', 
-    backgroundColor: '#F9FAFB', 
-    borderRadius: 12, 
-    padding: 12, 
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#FF6B35',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  exerciseNumber: { 
-    width: 28, 
-    height: 28, 
-    borderRadius: 14, 
-    backgroundColor: '#FF6B35',  // Naranja O2
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#E55A2B',
-  },
-  exerciseNumberText: { 
-    color: '#FFFFFF', 
-    fontSize: 14, 
-    fontWeight: 'bold' 
-  },
-  exerciseContent: { flex: 1 },
-  exerciseName: { 
-    fontSize: 15, 
-    fontWeight: '600', 
-    color: '#1A1A1A',  // Negro O2
-    marginBottom: 4 
-  },
-  exerciseDetails: { 
-    fontSize: 12, 
-    color: '#6B7280', 
-    marginBottom: 6 
-  },
-  grupoMuscular: { 
-    alignSelf: 'flex-start', 
-    paddingHorizontal: 8, 
-    paddingVertical: 3, 
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  grupoMuscularText: { 
-    color: '#FFFFFF', 
-    fontSize: 10, 
-    fontWeight: 'bold', 
-    textTransform: 'uppercase' 
-  },
-  warningBox: { 
-    backgroundColor: '#FFE5DC',  // Naranja muy claro
-    margin: 16, 
-    marginTop: 0, 
-    padding: 16, 
-    borderRadius: 12, 
-    borderLeftWidth: 4, 
-    borderLeftColor: '#FF6B35',  // Naranja O2
-    borderWidth: 1,
-    borderColor: '#FFD4C4',
-  },
-  warningText: { 
-    fontSize: 13, 
-    color: '#E55A2B',  // Naranja oscuro
-    lineHeight: 18 
-  },
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(26, 26, 26, 0.7)',  // Overlay oscuro
-    justifyContent: 'flex-end' 
-  },
-  modalContent: { 
-    backgroundColor: '#FFFFFF', 
-    borderTopLeftRadius: 24, 
-    borderTopRightRadius: 24, 
-    maxHeight: '70%',
-    borderTopWidth: 4,
-    borderTopColor: '#FF6B35',  // Borde superior naranja
-  },
-  modalHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: 20, 
-    borderBottomWidth: 2, 
-    borderBottomColor: '#FFE5DC'  // Naranja muy claro
-  },
-  modalTitle: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    color: '#1A1A1A'  // Negro O2
-  },
-  modalClose: { 
-    fontSize: 28, 
-    color: '#6B7280' 
-  },
-  modalClientItem: { 
-    padding: 16, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#F3F4F6' 
-  },
-  modalClientName: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#1A1A1A',  // Negro O2
-    marginBottom: 4 
-  },
-  modalClientEmail: { 
-    fontSize: 13, 
-    color: '#6B7280' 
-  },
-  emptyText: { 
-    textAlign: 'center', 
-    color: '#6B7280', 
-    fontSize: 14, 
-    paddingVertical: 40 
+  previewSendText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

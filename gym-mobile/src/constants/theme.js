@@ -1,48 +1,49 @@
 // src/constants/theme.js
 export const theme = {
   colors: {
-    primary: '#FF6B35',
-    primaryDark: '#E55A2B',
-    primaryLight: '#FF8456',
-    secondary: '#1A1A1A',
+    primary: '#F97316',
+    primaryDark: '#EA6C0A',
+    primaryLight: '#FB923C',
+    secondary: '#0F0F0F',
     white: '#FFFFFF',
     success: '#10B981',
     warning: '#F59E0B',
     danger: '#EF4444',
-    background: '#F9FAFB',
-    card: '#FFFFFF',
+    background: '#0F0F0F',
+    card: '#1C1C1E',
+    cardBorder: '#2C2C2E',
     text: {
-      primary: '#1F2937',
-      secondary: '#6B7280',
-      light: '#9CA3AF',
+      primary: '#F5F5F5',
+      secondary: '#A1A1AA',
+      light: '#71717A',
     },
-    border: '#E5E7EB',
+    border: '#2C2C2E',
   },
-  
+
   shadows: {
     small: {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
+      shadowOpacity: 0.3,
       shadowRadius: 4,
       elevation: 3,
     },
     medium: {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.4,
       shadowRadius: 8,
       elevation: 6,
     },
     large: {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.2,
+      shadowOpacity: 0.5,
       shadowRadius: 16,
       elevation: 12,
     },
   },
-  
+
   spacing: {
     xs: 4,
     sm: 8,
@@ -51,7 +52,7 @@ export const theme = {
     xl: 32,
     xxl: 48,
   },
-  
+
   borderRadius: {
     sm: 8,
     md: 12,
@@ -59,27 +60,27 @@ export const theme = {
     xl: 24,
     full: 9999,
   },
-  
+
   typography: {
     title: {
       fontSize: 28,
       fontWeight: 'bold',
-      color: '#1F2937',
+      color: '#F5F5F5',
     },
     subtitle: {
       fontSize: 18,
       fontWeight: '600',
-      color: '#1F2937',
+      color: '#F5F5F5',
     },
     body: {
       fontSize: 16,
       fontWeight: '400',
-      color: '#374151',
+      color: '#A1A1AA',
     },
     caption: {
       fontSize: 14,
       fontWeight: '400',
-      color: '#6B7280',
+      color: '#71717A',
     },
   },
 };
