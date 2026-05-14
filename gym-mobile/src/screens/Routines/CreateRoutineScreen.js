@@ -1,4 +1,4 @@
-// src/screens/Routines/CreateRoutineScreen.js - CON VALIDACIONES ✅
+﻿// src/screens/Routines/CreateRoutineScreen.js - CON VALIDACIONES ✅
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -12,8 +12,24 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
 import SelectorEjerciciosModal from '../../components/SelectorEjerciciosModal';
+
+const TIPOS = [
+  { key: 'fuerza',        icon: 'barbell-outline',      color: '#EF4444', label: 'Fuerza' },
+  { key: 'hipertrofia',   icon: 'fitness-outline',      color: '#8B5CF6', label: 'Hipertrofia' },
+  { key: 'cardio',        icon: 'heart-outline',        color: '#F59E0B', label: 'Cardio' },
+  { key: 'resistencia',   icon: 'timer-outline',        color: '#10B981', label: 'Resistencia' },
+  { key: 'funcional',     icon: 'flash-outline',        color: '#3B82F6', label: 'Funcional' },
+  { key: 'personalizado', icon: 'star-outline',         color: '#F97316', label: 'Personalizado' },
+];
+const NIVELES = [
+  { key: 'principiante', icon: 'leaf-outline',        color: '#10B981', label: 'Principiante' },
+  { key: 'intermedio',   icon: 'trending-up-outline', color: '#F59E0B', label: 'Intermedio' },
+  { key: 'avanzado',     icon: 'flame-outline',       color: '#EF4444', label: 'Avanzado' },
+];
+const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
 export default function CreateRoutineScreen({ navigation }) {
   const { clients, routines } = useDatabase();
@@ -36,6 +52,9 @@ export default function CreateRoutineScreen({ navigation }) {
   const [groups, setGroups] = useState([]);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showTipoModal, setShowTipoModal] = useState(false);
+  const [showNivelModal, setShowNivelModal] = useState(false);
+  const [showDiasModal, setShowDiasModal] = useState(false);
 
   const [newExercise, setNewExercise] = useState({
     nombre: '',
@@ -302,12 +321,21 @@ export default function CreateRoutineScreen({ navigation }) {
     }
   };
 
+  const getTipoInfo = (tipo) => TIPOS.find(t => t.key === tipo) || TIPOS[5];
+  const getNivelInfo = (nivel) => NIVELES.find(n => n.key === nivel) || NIVELES[0];
+  const formatDias = (dias) => {
+    if (!dias || dias.length === 0) return 'Seleccionar días';
+    if (dias.length <= 3) return dias.map(d => d.slice(0, 3).toUpperCase()).join(' · ');
+    return `${dias.length} días seleccionados`;
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Cancelar</Text>
+        <TouchableOpacity style={styles.backButtonRow} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={20} color="#F97316" />
+          <Text style={styles.backButton}>Cancelar</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nueva Rutina</Text>
       </View>
@@ -356,55 +384,49 @@ export default function CreateRoutineScreen({ navigation }) {
         {/* Tipo */}
         <View style={styles.section}>
           <Text style={styles.label}>Tipo de rutina *</Text>
-          <View style={styles.chipContainer}>
-            {['fuerza', 'hipertrofia', 'cardio', 'resistencia', 'funcional', 'personalizado'].map((tipo) => (
-              <TouchableOpacity
-                key={tipo}
-                style={[styles.chip, formData.tipo === tipo && styles.chipActive]}
-                onPress={() => setFormData({ ...formData, tipo })}
-              >
-                <Text style={[styles.chipText, formData.tipo === tipo && styles.chipTextActive]}>
-                  {tipo}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity style={styles.selectorRow} onPress={() => setShowTipoModal(true)}>
+            <View style={styles.selectorLeft}>
+              <View style={[styles.selectorIcon, { backgroundColor: getTipoInfo(formData.tipo).color + '22' }]}>
+                <Ionicons name={getTipoInfo(formData.tipo).icon} size={16} color={getTipoInfo(formData.tipo).color} />
+              </View>
+              <Text style={[styles.selectorValue, { color: getTipoInfo(formData.tipo).color }]}>
+                {getTipoInfo(formData.tipo).label}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color="#71717A" />
+          </TouchableOpacity>
         </View>
 
         {/* Nivel */}
         <View style={styles.section}>
           <Text style={styles.label}>Nivel *</Text>
-          <View style={styles.chipContainer}>
-            {['principiante', 'intermedio', 'avanzado'].map((nivel) => (
-              <TouchableOpacity
-                key={nivel}
-                style={[styles.chip, formData.nivel === nivel && styles.chipActive]}
-                onPress={() => setFormData({ ...formData, nivel })}
-              >
-                <Text style={[styles.chipText, formData.nivel === nivel && styles.chipTextActive]}>
-                  {nivel}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity style={styles.selectorRow} onPress={() => setShowNivelModal(true)}>
+            <View style={styles.selectorLeft}>
+              <View style={[styles.selectorIcon, { backgroundColor: getNivelInfo(formData.nivel).color + '22' }]}>
+                <Ionicons name={getNivelInfo(formData.nivel).icon} size={16} color={getNivelInfo(formData.nivel).color} />
+              </View>
+              <Text style={[styles.selectorValue, { color: getNivelInfo(formData.nivel).color }]}>
+                {getNivelInfo(formData.nivel).label}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color="#71717A" />
+          </TouchableOpacity>
         </View>
 
         {/* Días de la semana */}
         <View style={styles.section}>
           <Text style={styles.label}>Días de entrenamiento *</Text>
-          <View style={styles.chipContainer}>
-            {['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'].map((dia) => (
-              <TouchableOpacity
-                key={dia}
-                style={[styles.chip, formData.diasSemana.includes(dia) && styles.chipActive]}
-                onPress={() => toggleDay(dia)}
-              >
-                <Text style={[styles.chipText, formData.diasSemana.includes(dia) && styles.chipTextActive]}>
-                  {dia.slice(0, 3).toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity style={styles.selectorRow} onPress={() => setShowDiasModal(true)}>
+            <View style={styles.selectorLeft}>
+              <View style={[styles.selectorIcon, { backgroundColor: '#F9731622' }]}>
+                <Ionicons name="calendar-outline" size={16} color="#F97316" />
+              </View>
+              <Text style={[styles.selectorValue, { color: formData.diasSemana.length > 0 ? '#F5F5F5' : '#71717A' }]}>
+                {formatDias(formData.diasSemana)}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color="#71717A" />
+          </TouchableOpacity>
         </View>
 
         {/* Duración */}
@@ -428,7 +450,10 @@ export default function CreateRoutineScreen({ navigation }) {
                 style={styles.addFromLibraryButton}
                 onPress={() => setShowSelectorModal(true)}
               >
-                <Text style={styles.addFromLibraryButtonText}>📚 Biblioteca</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="library-outline" size={14} color="#F97316" />
+                  <Text style={styles.addFromLibraryButtonText}>Biblioteca</Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.addExerciseButton}
@@ -453,8 +478,8 @@ export default function CreateRoutineScreen({ navigation }) {
                     {ej.series}x{ej.repeticiones} • {ej.peso} • {ej.descanso}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => removeExercise(index)}>
-                  <Text style={styles.removeButton}>🗑️</Text>
+                <TouchableOpacity onPress={() => removeExercise(index)} style={{ padding: 6 }}>
+                  <Ionicons name="trash-outline" size={18} color="#DC2626" />
                 </TouchableOpacity>
               </View>
             ))
@@ -487,7 +512,7 @@ export default function CreateRoutineScreen({ navigation }) {
                 Seleccionar Clientes ({selectedClients.length})
               </Text>
               <TouchableOpacity onPress={() => setShowClientModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Ionicons name="close" size={22} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
 
@@ -496,7 +521,10 @@ export default function CreateRoutineScreen({ navigation }) {
                 style={styles.groupSelectButton}
                 onPress={() => setShowGroupModal(true)}
               >
-                <Text style={styles.groupSelectButtonText}>👥 Seleccionar Grupo</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="people-outline" size={16} color="#FFFFFF" />
+                  <Text style={styles.groupSelectButtonText}>Seleccionar Grupo</Text>
+                </View>
               </TouchableOpacity>
             )}
 
@@ -510,8 +538,8 @@ export default function CreateRoutineScreen({ navigation }) {
                     style={[styles.clientItem, isSelected && styles.clientItemSelected]}
                     onPress={() => toggleClient(item.id || item._id)}
                   >
-                    <View style={styles.checkbox}>
-                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                      {isSelected && <Ionicons name="checkmark" size={14} color="#F97316" />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.clientName}>
@@ -525,13 +553,16 @@ export default function CreateRoutineScreen({ navigation }) {
             />
 
             {selectedClients.length > 0 && (
-              <TouchableOpacity 
-                style={styles.confirmClientButton} 
+              <TouchableOpacity
+                style={styles.confirmClientButton}
                 onPress={() => setShowClientModal(false)}
               >
-                <Text style={styles.confirmClientButtonText}>
-                  ✓ Confirmar {selectedClients.length} cliente(s)
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                  <Text style={styles.confirmClientButtonText}>
+                    Confirmar {selectedClients.length} cliente(s)
+                  </Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -550,7 +581,7 @@ export default function CreateRoutineScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Seleccionar Grupo</Text>
               <TouchableOpacity onPress={() => setShowGroupModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Ionicons name="close" size={22} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
 
@@ -588,7 +619,7 @@ export default function CreateRoutineScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Agregar Ejercicio</Text>
               <TouchableOpacity onPress={() => setShowExerciseModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Ionicons name="close" size={22} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
 
@@ -602,18 +633,29 @@ export default function CreateRoutineScreen({ navigation }) {
               />
 
               <Text style={styles.label}>Grupo muscular</Text>
-              <View style={styles.chipContainer}>
-                {['pecho', 'espalda', 'piernas', 'hombros', 'brazos', 'abdominales', 'cardio', 'fullbody'].map((grupo) => (
-                  <TouchableOpacity
-                    key={grupo}
-                    style={[styles.chip, newExercise.grupoMuscular === grupo && styles.chipActive]}
-                    onPress={() => setNewExercise({ ...newExercise, grupoMuscular: grupo })}
-                  >
-                    <Text style={[styles.chipText, newExercise.grupoMuscular === grupo && styles.chipTextActive]}>
-                      {grupo}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.grupoGrid}>
+                {[
+                  { key: 'pecho',      icon: 'body-outline',       label: 'Pecho' },
+                  { key: 'espalda',    icon: 'fitness-outline',    label: 'Espalda' },
+                  { key: 'piernas',    icon: 'walk-outline',       label: 'Piernas' },
+                  { key: 'hombros',    icon: 'trending-up-outline', label: 'Hombros' },
+                  { key: 'brazos',     icon: 'barbell-outline',    label: 'Brazos' },
+                  { key: 'abdominales',icon: 'layers-outline',     label: 'Abdomen' },
+                  { key: 'cardio',     icon: 'heart-outline',      label: 'Cardio' },
+                  { key: 'fullbody',   icon: 'flash-outline',      label: 'Full Body' },
+                ].map(({ key, icon, label }) => {
+                  const active = newExercise.grupoMuscular === key;
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[styles.grupoChip, active && styles.grupoChipActive]}
+                      onPress={() => setNewExercise({ ...newExercise, grupoMuscular: key })}
+                    >
+                      <Ionicons name={icon} size={16} color={active ? '#FFFFFF' : '#71717A'} />
+                      <Text style={[styles.grupoChipText, active && styles.grupoChipTextActive]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               <View style={styles.row}>
@@ -660,7 +702,10 @@ export default function CreateRoutineScreen({ navigation }) {
               </View>
 
               <TouchableOpacity style={styles.addButton} onPress={addExercise}>
-                <Text style={styles.addButtonText}>✓ Agregar Ejercicio</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                  <Text style={styles.addButtonText}>Agregar Ejercicio</Text>
+                </View>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -673,29 +718,118 @@ export default function CreateRoutineScreen({ navigation }) {
         onClose={() => setShowSelectorModal(false)}
         onSelectEjercicio={handleSelectFromBiblioteca}
       />
+
+      {/* Tipo Picker */}
+      <Modal visible={showTipoModal} animationType="slide" transparent={true} onRequestClose={() => setShowTipoModal(false)}>
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerHandle} />
+            <Text style={styles.pickerTitle}>Tipo de rutina</Text>
+            {TIPOS.map(({ key, icon, color, label }) => {
+              const active = formData.tipo === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.pickerOption, active && styles.pickerOptionActive]}
+                  onPress={() => { setFormData({ ...formData, tipo: key }); setShowTipoModal(false); }}
+                >
+                  <View style={[styles.pickerOptionIcon, { backgroundColor: color + '22' }]}>
+                    <Ionicons name={icon} size={18} color={color} />
+                  </View>
+                  <Text style={[styles.pickerOptionText, active && styles.pickerOptionTextActive]}>{label}</Text>
+                  {active && <Ionicons name="checkmark-circle" size={20} color="#F97316" />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Nivel Picker */}
+      <Modal visible={showNivelModal} animationType="slide" transparent={true} onRequestClose={() => setShowNivelModal(false)}>
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerHandle} />
+            <Text style={styles.pickerTitle}>Nivel</Text>
+            {NIVELES.map(({ key, icon, color, label }) => {
+              const active = formData.nivel === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.pickerOption, active && styles.pickerOptionActive]}
+                  onPress={() => { setFormData({ ...formData, nivel: key }); setShowNivelModal(false); }}
+                >
+                  <View style={[styles.pickerOptionIcon, { backgroundColor: color + '22' }]}>
+                    <Ionicons name={icon} size={18} color={color} />
+                  </View>
+                  <Text style={[styles.pickerOptionText, active && styles.pickerOptionTextActive]}>{label}</Text>
+                  {active && <Ionicons name="checkmark-circle" size={20} color="#F97316" />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Días Picker */}
+      <Modal visible={showDiasModal} animationType="slide" transparent={true} onRequestClose={() => setShowDiasModal(false)}>
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerHandle} />
+            <Text style={styles.pickerTitle}>Días de entrenamiento</Text>
+            {DIAS.map((dia) => {
+              const active = formData.diasSemana.includes(dia);
+              return (
+                <TouchableOpacity
+                  key={dia}
+                  style={[styles.pickerOption, active && styles.pickerOptionActive]}
+                  onPress={() => toggleDay(dia)}
+                >
+                  <View style={[styles.checkbox, active && styles.checkboxSelected]}>
+                    {active && <Ionicons name="checkmark" size={14} color="#F97316" />}
+                  </View>
+                  <Text style={[styles.pickerOptionText, active && styles.pickerOptionTextActive]}>
+                    {dia.charAt(0).toUpperCase() + dia.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity style={styles.pickerDoneBtn} onPress={() => setShowDiasModal(false)}>
+              <Text style={styles.pickerDoneBtnText}>
+                {formData.diasSemana.length > 0 ? `Listo · ${formData.diasSemana.length} día(s)` : 'Cerrar'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   header: { 
     backgroundColor: '#1A1A1A',  // Negro O2
     padding: 24, 
     paddingTop: 48, 
     borderBottomWidth: 3, 
-    borderBottomColor: '#FF6B35',  // Naranja O2
-    shadowColor: '#FF6B35',
+    borderBottomColor: '#F97316',  // Naranja O2
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  backButton: { 
-    fontSize: 16, 
-    color: '#FF6B35',  // Naranja O2
+  backButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
+  },
+  backButton: {
+    fontSize: 16,
+    color: '#F97316',
     fontWeight: '600',
+    marginLeft: 2,
   },
   headerTitle: { 
     fontSize: 24, 
@@ -706,40 +840,124 @@ const styles = StyleSheet.create({
   form: { flex: 1, padding: 16 },
   section: { marginBottom: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+  label: { fontSize: 14, fontWeight: '600', color: '#F5F5F5', marginBottom: 8 },
   input: { 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: '#1C1C1E', 
     borderRadius: 12, 
     padding: 14, 
     fontSize: 16, 
     borderWidth: 2, 
-    borderColor: '#E5E7EB',
-    color: '#1A1A1A',
+    borderColor: '#2C2C2E',
+    color: '#F5F5F5',
   },
   textArea: { height: 80, textAlignVertical: 'top' },
   selectButton: { 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: '#1C1C1E', 
     borderRadius: 12, 
     padding: 14, 
     borderWidth: 2, 
-    borderColor: '#E5E7EB' 
+    borderColor: '#2C2C2E' 
   },
-  selectButtonText: { fontSize: 16, color: '#6B7280' },
-  chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { 
-    paddingVertical: 8, 
-    paddingHorizontal: 14, 
-    borderRadius: 20, 
-    backgroundColor: '#F3F4F6', 
-    borderWidth: 2, 
-    borderColor: '#E5E7EB' 
+  selectButtonText: { fontSize: 16, color: '#A1A1AA' },
+  selectorRow: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: '#2C2C2E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  chipActive: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
-    borderColor: '#E55A2B' 
+  selectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  chipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  chipTextActive: { color: '#FFFFFF' },
+  selectorIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectorValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 32,
+    borderTopWidth: 4,
+    borderTopColor: '#F97316',
+  },
+  pickerHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F5F5F5',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  pickerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  pickerOptionActive: {
+    backgroundColor: '#252525',
+  },
+  pickerOptionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#A1A1AA',
+    fontWeight: '500',
+    flex: 1,
+  },
+  pickerOptionTextActive: {
+    color: '#F5F5F5',
+    fontWeight: '700',
+  },
+  pickerDoneBtn: {
+    backgroundColor: '#F97316',
+    margin: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#EA6C0A',
+  },
+  pickerDoneBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   addButtonsContainer: {
     flexDirection: 'row',
     gap: 8
@@ -763,57 +981,57 @@ const styles = StyleSheet.create({
     fontWeight: 'bold' 
   },
   addExerciseButton: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
     paddingHorizontal: 14, 
     paddingVertical: 8, 
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#E55A2B',
+    borderColor: '#EA6C0A',
   },
   addExerciseButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: 'bold' },
-  emptyText: { textAlign: 'center', color: '#9CA3AF', fontSize: 14, paddingVertical: 20 },
-  exerciseItem: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFFFFF', 
-    padding: 12, 
-    borderRadius: 12, 
+  emptyText: { textAlign: 'center', color: '#A1A1AA', fontSize: 14, paddingVertical: 20 },
+  exerciseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    padding: 12,
+    borderRadius: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
-    borderLeftColor: '#FF6B35',  // Naranja O2
+    borderLeftColor: '#F97316',  // Naranja O2
     borderWidth: 1,
-    borderColor: '#FFE5DC',
+    borderColor: '#2C2C2E',
   },
   exerciseNumber: { 
     width: 28, 
     height: 28, 
     borderRadius: 14, 
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
     justifyContent: 'center', 
     alignItems: 'center', 
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#E55A2B',
+    borderColor: '#EA6C0A',
   },
   exerciseNumberText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
   exerciseInfo: { flex: 1 },
   exerciseName: { 
     fontSize: 15, 
     fontWeight: '600', 
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
     marginBottom: 2 
   },
-  exerciseDetails: { fontSize: 12, color: '#6B7280' },
+  exerciseDetails: { fontSize: 12, color: '#A1A1AA' },
   removeButton: { fontSize: 20, padding: 4 },
   submitButton: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
     padding: 16, 
     borderRadius: 12, 
     alignItems: 'center', 
     marginVertical: 24,
     borderWidth: 2,
-    borderColor: '#E55A2B',
-    shadowColor: '#FF6B35',
+    borderColor: '#EA6C0A',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -827,59 +1045,56 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end' 
   },
   modalContent: { 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: '#1C1C1E', 
     borderTopLeftRadius: 24, 
     borderTopRightRadius: 24, 
     maxHeight: '80%',
     borderTopWidth: 4,
-    borderTopColor: '#FF6B35',  // Naranja O2
+    borderTopColor: '#F97316',  // Naranja O2
   },
   modalHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
     padding: 20, 
-    borderBottomWidth: 2, 
-    borderBottomColor: '#FFE5DC'  // Naranja muy claro
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E'
   },
   modalTitle: { 
     fontSize: 20, 
     fontWeight: 'bold', 
-    color: '#1A1A1A'  // Negro O2
+    color: '#F5F5F5'  // Negro O2
   },
-  modalClose: { fontSize: 28, color: '#6B7280' },
   clientItem: { 
     padding: 16, 
     borderBottomWidth: 1, 
-    borderBottomColor: '#F3F4F6', 
+    borderBottomColor: '#2C2C2E',
     flexDirection: 'row', 
     alignItems: 'center' 
   },
   clientItemSelected: { 
-    backgroundColor: '#FFF5F2'  // Naranja muy suave
+    backgroundColor: '#431407'  // Naranja muy suave
   },
   checkbox: { 
     width: 24, 
     height: 24, 
     borderRadius: 12, 
     borderWidth: 2, 
-    borderColor: '#FF6B35',  // Naranja O2
+    borderColor: '#F97316',  // Naranja O2
     marginRight: 12, 
     justifyContent: 'center', 
     alignItems: 'center' 
   },
-  checkmark: { 
-    color: '#FF6B35',  // Naranja O2
-    fontSize: 16, 
-    fontWeight: 'bold' 
+  checkboxSelected: {
+    backgroundColor: '#431407',
   },
   clientName: { 
     fontSize: 16, 
     fontWeight: '600', 
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
     marginBottom: 4 
   },
-  clientEmail: { fontSize: 13, color: '#6B7280' },
+  clientEmail: { fontSize: 13, color: '#A1A1AA' },
   groupSelectButton: { 
     backgroundColor: '#2A2A2A',  // Gris oscuro
     margin: 16, 
@@ -888,8 +1103,8 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF6B35',
-    shadowColor: '#FF6B35',
+    borderColor: '#F97316',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -897,45 +1112,69 @@ const styles = StyleSheet.create({
   },
   groupSelectButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
   confirmClientButton: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
     margin: 16, 
     marginTop: 8, 
     padding: 16, 
     borderRadius: 12, 
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E55A2B',
-    shadowColor: '#FF6B35',
+    borderColor: '#EA6C0A',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
   },
   confirmClientButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
-  groupItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  groupItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#2C2C2E' },
   groupName: { 
     fontSize: 16, 
     fontWeight: '600', 
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
     marginBottom: 4 
   },
-  groupCount: { fontSize: 13, color: '#FF6B35' },  // Naranja O2
+  groupCount: { fontSize: 13, color: '#F97316' },  // Naranja O2
   exerciseForm: { padding: 20 },
   row: { flexDirection: 'row', gap: 12 },
   col: { flex: 1 },
   addButton: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
     padding: 14, 
     borderRadius: 12, 
     alignItems: 'center', 
     marginTop: 20,
     borderWidth: 2,
-    borderColor: '#E55A2B',
-    shadowColor: '#FF6B35',
+    borderColor: '#EA6C0A',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
   },
   addButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
+  grupoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  grupoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    width: '47%',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#2C2C2E',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+  grupoChipActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#EA6C0A',
+  },
+  grupoChipText: { fontSize: 13, fontWeight: '600', color: '#71717A' },
+  grupoChipTextActive: { color: '#FFFFFF' },
 });

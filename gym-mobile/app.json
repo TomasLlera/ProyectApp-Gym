@@ -5,9 +5,9 @@
     "owner": "tomasqwe",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "icon": "./assets/adaptive-icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
     "scheme": "gym-mobile",
     "splash": {
       "image": "./assets/splash.png",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gymapp.mobile",
-      "icon": "./assets/icon.png",
+      "icon": "./assets/adaptive-icon.png",
       "infoPlist": {
         "UIFileSharingEnabled": true,
         "LSSupportsOpeningDocumentsInPlace": true

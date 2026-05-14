@@ -3,7 +3,8 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useAuth } from '../context/AuthContext';
 import { useAppConfig } from '../context/AppConfigContext';
@@ -28,13 +29,9 @@ import BibliotecaEjerciciosScreen from '../screens/Exercises/BibliotecaEjercicio
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function TabIcon({ icon }) {
-  return <Text style={{ fontSize: 24 }}>{icon}</Text>;
-}
-
 function TabNavigator() {
   const { appName } = useAppConfig();
-  
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -46,63 +43,54 @@ function TabNavigator() {
           height: 60,
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.white,
+          backgroundColor: theme.colors.card,
         },
         headerStyle: {
-          backgroundColor: theme.colors.primary,
+          backgroundColor: theme.colors.card,
         },
-        headerTintColor: theme.colors.white,
+        headerTintColor: theme.colors.text.primary,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        // ✅ IMPORTANTE: Desmontar pantallas al cambiar de tab
         unmountOnBlur: true,
-      }}
-      // ✅ Listener para resetear stack al cambiar de tab
-      screenListeners={{
-        tabPress: (e) => {
-          // Esto resetea el stack cuando cambias de tab
-        },
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          title: `💪 O2 Gym`,
+          headerShown: false,
           tabBarLabel: 'Inicio',
-          tabBarIcon: ({ color }) => <TabIcon icon="📊" />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Clientes"
         component={ClientsScreen}
         options={{
-          title: '👥 Clientes',
+          title: 'Clientes',
           tabBarLabel: 'Clientes',
-          tabBarIcon: ({ color }) => <TabIcon icon="👥" />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Rutinas"
         component={RoutinesStack}
         options={{
-          headerShown: false, // ✅ Ocultar header del tab
+          headerShown: false,
           tabBarLabel: 'Rutinas',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 22 }}>🏋️</Text>
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="barbell-outline" size={size} color={color} />
           ),
         }}
         listeners={({ navigation }) => ({
-          // ✅ Resetear stack de rutinas al presionar tab
           tabPress: (e) => {
-            // Prevenir comportamiento por defecto
             e.preventDefault();
-            
-            // Navegar a la raíz del stack de rutinas
-            navigation.navigate('Rutinas', {
-              screen: 'RoutinesList',
-            });
+            navigation.navigate('Rutinas', { screen: 'RoutinesList' });
           },
         })}
       />
@@ -110,9 +98,11 @@ function TabNavigator() {
         name="Perfil"
         component={ProfileScreen}
         options={{
-          title: '⚙️ Configuración',
+          headerShown: false,
           tabBarLabel: 'Perfil',
-          tabBarIcon: ({ color }) => <TabIcon icon="⚙️" />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -129,30 +119,21 @@ function RoutinesStack() {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen 
-        name="RoutinesList" 
+      <Stack.Screen
+        name="RoutinesList"
         component={RoutinesScreen}
         options={{
-          // ✅ Título del header cuando está en la lista principal
           headerShown: true,
-          headerTitle: '🏋️ Rutinas',
-          headerStyle: { 
-            backgroundColor: theme.colors.primary 
-          },
-          headerTintColor: theme.colors.white,
+          headerTitle: 'Rutinas',
+          headerStyle: { backgroundColor: theme.colors.card },
+          headerTintColor: theme.colors.text.primary,
           headerTitleStyle: { fontWeight: 'bold' },
         }}
       />
       <Stack.Screen
         name="RoutineDetail"
         component={RoutineDetailScreen}
-        options={{
-          headerShown: true,
-          headerTitle: 'Detalle de Rutina',
-          headerStyle: { backgroundColor: theme.colors.white },
-          headerTintColor: theme.colors.text.primary,
-          headerTitleStyle: { fontWeight: 'bold' },
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="RoutineTemplates"
@@ -213,8 +194,8 @@ export default function AppNavigator() {
           options={{
             headerShown: true,
             title: 'Detalle del Cliente',
-            headerStyle: { backgroundColor: theme.colors.primary },
-            headerTintColor: theme.colors.white,
+            headerStyle: { backgroundColor: theme.colors.card },
+            headerTintColor: theme.colors.text.primary,
             headerBackTitle: 'Volver',
           }}
         />
@@ -223,9 +204,9 @@ export default function AppNavigator() {
           component={ImportContactsScreen}
           options={{
             headerShown: true,
-            title: '📱 Importar Contactos',
-            headerStyle: { backgroundColor: theme.colors.primary },
-            headerTintColor: theme.colors.white,
+            title: 'Importar Contactos',
+            headerStyle: { backgroundColor: theme.colors.card },
+            headerTintColor: theme.colors.text.primary,
             headerBackTitle: 'Volver',
           }}
         />

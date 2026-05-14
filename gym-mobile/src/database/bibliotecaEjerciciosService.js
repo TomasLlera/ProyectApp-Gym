@@ -360,6 +360,50 @@ export const bibliotecaEjerciciosService = {
   },
 
   // ============================================
+  // 🏃 SEED EJERCICIOS DE CARDIO
+  // ============================================
+  seedCardioEjercicios: async () => {
+    const db = await getDatabase();
+    const ejerciciosCardio = [
+      // ── LISS (baja intensidad, estado estacionario) ──
+      { nombre: 'Trote en Cinta', grupoMuscular: 'cardio', equipamiento: 'Cinta de correr', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '30 min', descansoSugerido: 'N/A', descripcion: 'Trote a ritmo constante y moderado. Ideal para quemar grasa y mejorar resistencia aeróbica.' },
+      { nombre: 'Caminata Inclinada', grupoMuscular: 'cardio', equipamiento: 'Cinta de correr', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '40 min', descansoSugerido: 'N/A', descripcion: 'Caminata en inclinación 10-12% para mayor quema calórica sin impacto articular.' },
+      { nombre: 'Bicicleta Estática', grupoMuscular: 'cardio', equipamiento: 'Bicicleta estática', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '45 min', descansoSugerido: 'N/A', descripcion: 'Pedaleo a ritmo constante de intensidad moderada. Bajo impacto.' },
+      { nombre: 'Elíptica', grupoMuscular: 'cardio', equipamiento: 'Elíptica', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '30 min', descansoSugerido: 'N/A', descripcion: 'Cardio completo de bajo impacto articular. Trabaja tren superior e inferior.' },
+      { nombre: 'Remo Ergométrico', grupoMuscular: 'cardio', equipamiento: 'Remo ergométrico', dificultad: 'intermedio', seriesSugeridas: 1, repeticionesSugeridas: '20 min', descansoSugerido: 'N/A', descripcion: 'Trabaja tren superior, core y piernas simultáneamente. Alta demanda cardiovascular.' },
+      { nombre: 'Escaladora', grupoMuscular: 'cardio', equipamiento: 'Escaladora', dificultad: 'intermedio', seriesSugeridas: 1, repeticionesSugeridas: '25 min', descansoSugerido: 'N/A', descripcion: 'Simula subir escaleras. Intensidad alta, trabaja glúteos y cuádriceps.' },
+      // ── HIIT / Intervalos ──
+      { nombre: 'HIIT en Cinta', grupoMuscular: 'cardio', equipamiento: 'Cinta de correr', dificultad: 'avanzado', seriesSugeridas: 8, repeticionesSugeridas: '30 seg', descansoSugerido: '90 seg', descripcion: 'Sprints al 90% máximo intercalados con trote suave. Efecto EPOC post-ejercicio.' },
+      { nombre: 'Tabata', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'avanzado', seriesSugeridas: 8, repeticionesSugeridas: '20 seg', descansoSugerido: '10 seg', descripcion: 'Protocolo 20 seg trabajo / 10 seg descanso x8 rondas. 4 minutos totales de alta intensidad.' },
+      { nombre: 'Intervalos en Bicicleta', grupoMuscular: 'cardio', equipamiento: 'Bicicleta estática', dificultad: 'intermedio', seriesSugeridas: 10, repeticionesSugeridas: '1 min', descansoSugerido: '1 min', descripcion: 'Sprints en bici alternando alta y baja resistencia. Mejora capacidad anaeróbica.' },
+      // ── Cardio funcional / sin equipo ──
+      { nombre: 'Salto a la Soga', grupoMuscular: 'cardio', equipamiento: 'Soga', dificultad: 'principiante', seriesSugeridas: 5, repeticionesSugeridas: '3 min', descansoSugerido: '60 seg', descripcion: 'Cardio de alto impacto. Mejora coordinación, ritmo y resistencia cardiovascular.' },
+      { nombre: 'Burpees', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'avanzado', seriesSugeridas: 4, repeticionesSugeridas: '15 reps', descansoSugerido: '45 seg', descripcion: 'Ejercicio completo de cardio y fuerza. Eleva el ritmo cardíaco rápidamente.' },
+      { nombre: 'Mountain Climbers', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'intermedio', seriesSugeridas: 4, repeticionesSugeridas: '30 seg', descansoSugerido: '30 seg', descripcion: 'Core y cardio en posición de plancha. Rodillas alternadas al pecho a máxima velocidad.' },
+      { nombre: 'Jumping Jacks', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'principiante', seriesSugeridas: 3, repeticionesSugeridas: '1 min', descansoSugerido: '30 seg', descripcion: 'Cardio básico de calentamiento. Abre brazos y piernas simultáneamente.' },
+      { nombre: 'Box Jumps', grupoMuscular: 'cardio', equipamiento: 'Cajón pliométrico', dificultad: 'avanzado', seriesSugeridas: 4, repeticionesSugeridas: '10 reps', descansoSugerido: '60 seg', descripcion: 'Saltos explosivos sobre cajón. Desarrolla potencia, fuerza y capacidad cardio.' },
+      { nombre: 'Sentadilla con Salto', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'intermedio', seriesSugeridas: 3, repeticionesSugeridas: '15 reps', descansoSugerido: '45 seg', descripcion: 'Variante explosiva de la sentadilla. Combina fuerza de piernas y cardio.' },
+    ];
+
+    let creados = 0;
+    for (const ej of ejerciciosCardio) {
+      try {
+        const existe = await db.getFirstAsync(
+          'SELECT id FROM biblioteca_ejercicios WHERE LOWER(nombre) = LOWER(?) AND activo = 1',
+          [ej.nombre]
+        );
+        if (existe) continue;
+        await bibliotecaEjerciciosService.create(ej);
+        creados++;
+      } catch (error) {
+        console.warn(`Error creando ${ej.nombre}:`, error);
+      }
+    }
+    console.log(`✅ ${creados} ejercicios de cardio creados`);
+    return creados;
+  },
+
+  // ============================================
   // 🎯 CREAR EJERCICIOS PREDETERMINADOS
   // ============================================
   crearEjerciciosPredeterminados: async () => {
@@ -399,6 +443,18 @@ export const bibliotecaEjerciciosService = {
       { nombre: 'Crunches', grupoMuscular: 'abdominales', equipamiento: 'Peso corporal', dificultad: 'principiante', seriesSugeridas: 3, repeticionesSugeridas: '15-20' },
       { nombre: 'Elevaciones de Piernas', grupoMuscular: 'abdominales', equipamiento: 'Peso corporal', dificultad: 'intermedio', seriesSugeridas: 3, repeticionesSugeridas: '12-15' },
       { nombre: 'Russian Twists', grupoMuscular: 'abdominales', equipamiento: 'Peso corporal', dificultad: 'intermedio', seriesSugeridas: 3, repeticionesSugeridas: '20-30' },
+
+      // CARDIO
+      { nombre: 'Trote en Cinta', grupoMuscular: 'cardio', equipamiento: 'Cinta de correr', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '30 min', descansoSugerido: 'N/A' },
+      { nombre: 'Caminata Inclinada', grupoMuscular: 'cardio', equipamiento: 'Cinta de correr', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '40 min', descansoSugerido: 'N/A' },
+      { nombre: 'Bicicleta Estática', grupoMuscular: 'cardio', equipamiento: 'Bicicleta estática', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '45 min', descansoSugerido: 'N/A' },
+      { nombre: 'Elíptica', grupoMuscular: 'cardio', equipamiento: 'Elíptica', dificultad: 'principiante', seriesSugeridas: 1, repeticionesSugeridas: '30 min', descansoSugerido: 'N/A' },
+      { nombre: 'Remo Ergométrico', grupoMuscular: 'cardio', equipamiento: 'Remo ergométrico', dificultad: 'intermedio', seriesSugeridas: 1, repeticionesSugeridas: '20 min', descansoSugerido: 'N/A' },
+      { nombre: 'HIIT en Cinta', grupoMuscular: 'cardio', equipamiento: 'Cinta de correr', dificultad: 'avanzado', seriesSugeridas: 8, repeticionesSugeridas: '30 seg', descansoSugerido: '90 seg' },
+      { nombre: 'Tabata', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'avanzado', seriesSugeridas: 8, repeticionesSugeridas: '20 seg', descansoSugerido: '10 seg' },
+      { nombre: 'Salto a la Soga', grupoMuscular: 'cardio', equipamiento: 'Soga', dificultad: 'principiante', seriesSugeridas: 5, repeticionesSugeridas: '3 min', descansoSugerido: '60 seg' },
+      { nombre: 'Burpees', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'avanzado', seriesSugeridas: 4, repeticionesSugeridas: '15 reps', descansoSugerido: '45 seg' },
+      { nombre: 'Mountain Climbers', grupoMuscular: 'cardio', equipamiento: 'Sin equipo', dificultad: 'intermedio', seriesSugeridas: 4, repeticionesSugeridas: '30 seg', descansoSugerido: '30 seg' },
     ];
     
     let creados = 0;

@@ -1,4 +1,4 @@
-// src/screens/Clients/ImportContactsScreen.js
+﻿// src/screens/Clients/ImportContactsScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
 
 export default function ImportContactsScreen({ navigation }) {
@@ -366,7 +367,7 @@ export default function ImportContactsScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B35" />
+        <ActivityIndicator size="large" color="#F97316" />
         <Text style={styles.loadingText}>Cargando contactos...</Text>
         <Text style={styles.loadingSubtext}>Esto puede tomar unos segundos</Text>
       </View>
@@ -381,13 +382,16 @@ export default function ImportContactsScreen({ navigation }) {
           <Text style={styles.backButton}>← Volver</Text>
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>📱 Importar Contactos</Text>
+          <Text style={styles.headerTitle}>Importar Contactos</Text>
           <TouchableOpacity 
             style={styles.reloadButton}
             onPress={reloadContacts}
             disabled={loading}
           >
-            <Text style={styles.reloadButtonText}>🔄 Recargar</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="refresh-outline" size={13} color="#FFFFFF" />
+              <Text style={styles.reloadButtonText}>Recargar</Text>
+            </View>
           </TouchableOpacity>
         </View>
         <Text style={styles.headerSubtitle}>
@@ -397,11 +401,11 @@ export default function ImportContactsScreen({ navigation }) {
 
       {/* Búsqueda */}
       <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search" size={18} color="#A1A1AA" style={{ marginRight: 8 }} />
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar contacto..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#71717A"
           value={searchTerm}
           onChangeText={setSearchTerm}
         />
@@ -410,10 +414,16 @@ export default function ImportContactsScreen({ navigation }) {
       {/* Botones de Selección */}
       <View style={styles.selectionButtons}>
         <TouchableOpacity style={styles.selectionButton} onPress={selectAll}>
-          <Text style={styles.selectionButtonText}>✅ Todos</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="checkmark-circle" size={15} color="#EA6C0A" />
+            <Text style={styles.selectionButtonText}>Todos</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.selectionButton} onPress={deselectAll}>
-          <Text style={styles.selectionButtonText}>❌ Ninguno</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="close-circle" size={15} color="#EA6C0A" />
+            <Text style={styles.selectionButtonText}>Ninguno</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -457,11 +467,15 @@ export default function ImportContactsScreen({ navigation }) {
                     </View>
                   )}
                 </View>
-                <Text style={styles.contactPhone}>📱 {item.phoneNumber}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="call-outline" size={13} color="#A1A1AA" />
+                  <Text style={styles.contactPhone}>{item.phoneNumber}</Text>
+                </View>
                 {!item.hasRealEmail && (
-                  <Text style={styles.tempEmailWarning}>
-                    ⚠️ Email temporal: {item.email}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <Ionicons name="warning-outline" size={12} color="#F59E0B" />
+                    <Text style={styles.tempEmailWarning}>Email temporal: {item.email}</Text>
+                  </View>
                 )}
               </View>
             </TouchableOpacity>
@@ -469,7 +483,7 @@ export default function ImportContactsScreen({ navigation }) {
         }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>📭</Text>
+            <Ionicons name="mail-outline" size={64} color="#3F3F46" style={{ marginBottom: 16 }} />
             <Text style={styles.emptyText}>No se encontraron contactos</Text>
             <Text style={styles.emptySubtext}>
               {searchTerm ? 'Intenta con otra búsqueda' : 'No hay contactos en tu teléfono'}
@@ -486,12 +500,15 @@ export default function ImportContactsScreen({ navigation }) {
             onPress={importSelectedContacts}
             disabled={importing}
           >
-            <Text style={styles.importButtonText}>
-              {importing 
-                ? '⏳ Importando...' 
-                : `📥 Importar ${selectedContacts.length} Contacto(s)`
-              }
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name={importing ? 'hourglass-outline' : 'download-outline'} size={18} color="#FFFFFF" />
+              <Text style={styles.importButtonText}>
+                {importing
+                  ? 'Importando...'
+                  : `Importar ${selectedContacts.length} Contacto(s)`
+                }
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       )}
@@ -500,31 +517,31 @@ export default function ImportContactsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F0F0F',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: '#F5F5F5',
     fontWeight: '600',
   },
   loadingSubtext: {
     marginTop: 8,
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
   },
   header: {
     backgroundColor: '#1A1A1A',
     padding: 24,
     paddingTop: 48,
     borderBottomWidth: 3,
-    borderBottomColor: '#FF6B35',
-    shadowColor: '#FF6B35',
+    borderBottomColor: '#F97316',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -532,7 +549,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     fontSize: 16,
-    color: '#FF6B35',
+    color: '#F97316',
     marginBottom: 12,
     fontWeight: '600',
   },
@@ -549,12 +566,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reloadButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#F97316',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E55A2B',
+    borderColor: '#EA6C0A',
   },
   reloadButtonText: {
     color: '#FFFFFF',
@@ -563,24 +580,23 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#FF8456',
+    color: '#F97316',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     margin: 16,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: '#2C2C2E',
   },
-  searchIcon: { fontSize: 20, marginRight: 8 },
   searchInput: {
     flex: 1,
     padding: 12,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: '#F5F5F5',
   },
   selectionButtons: {
     flexDirection: 'row',
@@ -590,36 +606,36 @@ const styles = StyleSheet.create({
   },
   selectionButton: {
     flex: 1,
-    backgroundColor: '#FFF5F2',
+    backgroundColor: '#431407',
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF6B35',
+    borderColor: '#F97316',
   },
   selectionButtonText: {
-    color: '#E55A2B',
+    color: '#EA6C0A',
     fontSize: 13,
     fontWeight: 'bold',
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     marginHorizontal: 16,
     marginBottom: 8,
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: '#2C2C2E',
   },
   contactItemSelected: {
-    backgroundColor: '#FFF5F2',
-    borderColor: '#FF6B35',
+    backgroundColor: '#431407',
+    borderColor: '#F97316',
   },
   contactItemDuplicate: {
     opacity: 0.6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#2C2C2E',
   },
   contactNameRow: {
     flexDirection: 'row',
@@ -644,15 +660,15 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: '#2C2C2E',
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
   },
   checkboxSelected: {
-    borderColor: '#FF6B35',
-    backgroundColor: '#FF6B35',
+    borderColor: '#F97316',
+    backgroundColor: '#F97316',
   },
   checkmark: {
     color: '#FFFFFF',
@@ -663,12 +679,12 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#F5F5F5',
     marginBottom: 4,
   },
   contactPhone: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
     marginBottom: 2,
   },
   tempEmailWarning: {
@@ -681,35 +697,31 @@ const styles = StyleSheet.create({
     padding: 40,
     alignItems: 'center',
   },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   emptyText: {
     fontSize: 18,
-    color: '#1A1A1A',
+    color: '#F5F5F5',
     fontWeight: '600',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
     textAlign: 'center',
   },
   importButtonContainer: {
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#2C2C2E',
   },
   importButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#F97316',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E55A2B',
-    shadowColor: '#FF6B35',
+    borderColor: '#EA6C0A',
+    shadowColor: '#F97316',
     shadowOpacity: 0.4,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },

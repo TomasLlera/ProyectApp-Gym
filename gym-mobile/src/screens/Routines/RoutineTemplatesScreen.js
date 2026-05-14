@@ -1,4 +1,4 @@
-// src/screens/Routines/RoutineTemplatesScreen.js
+﻿// src/screens/Routines/RoutineTemplatesScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,6 +10,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
 
 export default function RoutineTemplatesScreen({ navigation }) {
@@ -142,7 +143,8 @@ export default function RoutineTemplatesScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Cargando...</Text>
+        <Ionicons name="copy-outline" size={48} color="#F97316" style={{ marginBottom: 14 }} />
+        <Text style={styles.loadingText}>Cargando plantillas...</Text>
       </View>
     );
   }
@@ -150,49 +152,81 @@ export default function RoutineTemplatesScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Volver</Text>
+        <TouchableOpacity style={styles.backButtonRow} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={20} color="#F97316" />
+          <Text style={styles.backButton}>Volver</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>📚 Plantillas</Text>
+        <Text style={styles.headerTitle}>Plantillas</Text>
         <Text style={styles.headerSubtitle}>Selecciona una plantilla</Text>
       </View>
 
       <ScrollView style={styles.list}>
-        {templates.map((template, index) => (
-          <View key={index} style={styles.templateCard}>
-            <Text style={styles.templateName}>{template.nombre}</Text>
-            
-            <View style={styles.templateBadges}>
-              <View style={[styles.badge, { backgroundColor: getTipoColor(template.tipo) }]}>
-                <Text style={styles.badgeText}>{template.tipo}</Text>
-              </View>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{template.nivel}</Text>
-              </View>
-            </View>
-
-            <View style={styles.templateInfo}>
-              <Text style={styles.infoText}>💪 {template.ejercicios?.length} ejercicios</Text>
-              <Text style={styles.infoText}>⏱️ {template.duracionEstimada} min</Text>
-              <Text style={styles.infoText}>📅 {template.diasSemana?.length} días</Text>
-            </View>
-
-            <View style={styles.daysContainer}>
-              {template.diasSemana?.map((dia) => (
-                <View key={dia} style={styles.dayChip}>
-                  <Text style={styles.dayChipText}>{dia.slice(0, 3).toUpperCase()}</Text>
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity 
-              style={styles.useButton}
-              onPress={() => selectTemplate(template)}
+        {templates.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="copy-outline" size={64} color="#3F3F46" style={{ marginBottom: 16 }} />
+            <Text style={styles.emptyTitle}>No hay plantillas</Text>
+            <Text style={styles.emptySubtext}>Crea una plantilla para asignar rutinas a tus clientes</Text>
+            <TouchableOpacity
+              style={styles.createBtn}
+              onPress={() => navigation.navigate('CreateTemplate')}
             >
-              <Text style={styles.useButtonText}>✨ Usar Plantilla</Text>
+              <Ionicons name="add-circle-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.createBtnText}>Nueva Plantilla</Text>
             </TouchableOpacity>
           </View>
-        ))}
+        )}
+        {templates.map((template, index) => {
+          const tipoColor = getTipoColor(template.tipo);
+          return (
+            <View key={index} style={[styles.templateCard, { borderLeftColor: tipoColor }]}>
+              {/* Header */}
+              <View style={styles.templateHeader}>
+                <Text style={styles.templateName}>{template.nombre}</Text>
+                <View style={[styles.badge, { backgroundColor: tipoColor + '25', borderColor: tipoColor + '60' }]}>
+                  <Text style={[styles.badgeText, { color: tipoColor }]}>{template.tipo?.toUpperCase()}</Text>
+                </View>
+              </View>
+
+              <View style={styles.templateSubRow}>
+                <View style={styles.nivelBadge}>
+                  <Text style={styles.nivelBadgeText}>{template.nivel?.toUpperCase()}</Text>
+                </View>
+              </View>
+
+              {/* Stats */}
+              <View style={styles.templateStats}>
+                <View style={styles.statItem}>
+                  <Ionicons name="barbell-outline" size={13} color="#71717A" />
+                  <Text style={styles.statText}>{template.ejercicios?.length || 0} ejerc.</Text>
+                </View>
+                <View style={styles.statDot} />
+                <View style={styles.statItem}>
+                  <Ionicons name="timer-outline" size={13} color="#71717A" />
+                  <Text style={styles.statText}>{template.duracionEstimada} min</Text>
+                </View>
+                <View style={styles.statDot} />
+                <View style={styles.statItem}>
+                  <Ionicons name="calendar-outline" size={13} color="#71717A" />
+                  <Text style={styles.statText}>{template.diasSemana?.length || 0} días/sem</Text>
+                </View>
+              </View>
+
+              {/* Days */}
+              <View style={styles.daysContainer}>
+                {template.diasSemana?.map((dia) => (
+                  <View key={dia} style={styles.dayChip}>
+                    <Text style={styles.dayChipText}>{dia.slice(0, 3).toUpperCase()}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <TouchableOpacity style={[styles.useButton, { backgroundColor: tipoColor }]} onPress={() => selectTemplate(template)}>
+                <Ionicons name="flash-outline" size={16} color="#fff" />
+                <Text style={styles.useButtonText}>Usar Plantilla</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
       </ScrollView>
 
       {/* Client Selection Modal */}
@@ -208,8 +242,8 @@ export default function RoutineTemplatesScreen({ navigation }) {
               <Text style={styles.modalTitle}>
                 Seleccionar Clientes ({selectedClients.length})
               </Text>
-              <TouchableOpacity onPress={() => setShowClientModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity onPress={() => setShowClientModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
 
@@ -218,7 +252,10 @@ export default function RoutineTemplatesScreen({ navigation }) {
                 style={styles.groupButton}
                 onPress={() => setShowGroupModal(true)}
               >
-                <Text style={styles.groupButtonText}>👥 Seleccionar Grupo</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="people-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.groupButtonText}>Seleccionar Grupo</Text>
+                </View>
               </TouchableOpacity>
             )}
 
@@ -232,8 +269,8 @@ export default function RoutineTemplatesScreen({ navigation }) {
                     style={[styles.clientItem, isSelected && styles.clientItemSelected]}
                     onPress={() => toggleClient(item.id || item._id)}
                   >
-                    <View style={styles.checkbox}>
-                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                      {isSelected && <Ionicons name="checkmark" size={14} color="#F97316" />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.clientName}>
@@ -251,9 +288,10 @@ export default function RoutineTemplatesScreen({ navigation }) {
 
             {selectedClients.length > 0 && (
               <TouchableOpacity style={styles.confirmButton} onPress={assignTemplate}>
-                <Text style={styles.confirmButtonText}>
-                  ✓ Crear para {selectedClients.length} cliente(s)
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                  <Text style={styles.confirmButtonText}>Crear para {selectedClients.length} cliente(s)</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -272,7 +310,7 @@ export default function RoutineTemplatesScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Seleccionar Grupo</Text>
               <TouchableOpacity onPress={() => setShowGroupModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Ionicons name="close" size={22} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
 
@@ -297,6 +335,14 @@ export default function RoutineTemplatesScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fabButton}
+        onPress={() => navigation.navigate('CreateTemplate')}
+      >
+        <Ionicons name="add" size={30} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -308,123 +354,121 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#FF6B35'  // Naranja O2 para personalizado
+    personalizado: '#F97316'  // Naranja O2 para personalizado
   };
   return colors[tipo] || colors.personalizado;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { fontSize: 16, color: '#6B7280' },
-  header: { 
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0F0F' },
+  loadingText: { fontSize: 16, color: '#A1A1AA', fontWeight: '600' },
+  emptyState: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#F5F5F5', marginBottom: 8, textAlign: 'center' },
+  emptySubtext: { fontSize: 14, color: '#71717A', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  createBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F97316', paddingHorizontal: 20, paddingVertical: 12,
+    borderRadius: 12, borderWidth: 1, borderColor: '#EA6C0A',
+    shadowColor: '#F97316', shadowOpacity: 0.35, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 }, elevation: 5,
+  },
+  createBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  header: {
     backgroundColor: '#1A1A1A',  // Negro O2
     padding: 24, 
     paddingTop: 48, 
     borderBottomWidth: 3, 
-    borderBottomColor: '#FF6B35',  // Naranja O2
-    shadowColor: '#FF6B35',
+    borderBottomColor: '#F97316',  // Naranja O2
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  backButton: { 
-    fontSize: 16, 
-    color: '#FF6B35',  // Naranja O2
-    marginBottom: 12,
-    fontWeight: '600',
-  },
+  backButtonRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  backButton: { fontSize: 16, color: '#F97316', fontWeight: '600', marginLeft: 2 },
   headerTitle: { 
     fontSize: 24, 
     fontWeight: 'bold', 
     color: '#FFFFFF', 
     marginBottom: 4 
   },
-  headerSubtitle: { fontSize: 14, color: '#FF8456' },  // Naranja claro
+  headerSubtitle: { fontSize: 14, color: '#F97316' },  // Naranja claro
   list: { flex: 1, padding: 16 },
-  templateCard: { 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 16, 
-    padding: 16, 
-    marginBottom: 16,
+  templateCard: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',  // Naranja O2
     borderWidth: 1,
-    borderColor: '#FFE5DC',
-    shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
   },
-  templateName: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
-    color: '#1A1A1A',  // Negro O2
-    marginBottom: 8 
-  },
-  templateBadges: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  badge: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  badgeText: { 
-    color: '#FFFFFF', 
-    fontSize: 11, 
-    fontWeight: 'bold', 
-    textTransform: 'uppercase' 
-  },
-  templateInfo: { flexDirection: 'row', gap: 16, marginBottom: 12 },
-  infoText: { fontSize: 12, color: '#6B7280' },
-  daysContainer: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 12 },
-  dayChip: { 
-    backgroundColor: '#FFE5DC',  // Naranja muy claro
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
+  templateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
+  templateName: { fontSize: 17, fontWeight: '800', color: '#F5F5F5', flex: 1, marginRight: 10 },
+  templateSubRow: { marginBottom: 12 },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FF6B35',
   },
-  dayChipText: { 
-    color: '#E55A2B',  // Naranja oscuro
-    fontSize: 10, 
-    fontWeight: 'bold' 
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  nivelBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#2C2C2E',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
   },
-  useButton: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
-    padding: 12, 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    marginTop: 8,
-    borderWidth: 2,
-    borderColor: '#E55A2B',
-    shadowColor: '#FF6B35',
+  nivelBadgeText: { fontSize: 10, fontWeight: '700', color: '#71717A', letterSpacing: 0.4 },
+  templateStats: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statText: { fontSize: 12, color: '#71717A', fontWeight: '500' },
+  statDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#3F3F46' },
+  daysContainer: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 14 },
+  dayChip: {
+    backgroundColor: '#431407',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F97316',
+  },
+  dayChipText: { color: '#EA6C0A', fontSize: 10, fontWeight: '700' },
+  useButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
   },
-  useButtonText: { 
-    color: '#FFFFFF', 
-    fontSize: 14, 
-    fontWeight: 'bold' 
-  },
+  useButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   modalOverlay: { 
     flex: 1, 
     backgroundColor: 'rgba(26, 26, 26, 0.7)',  // Overlay oscuro
     justifyContent: 'flex-end' 
   },
   modalContent: { 
-    backgroundColor: '#FFFFFF', 
+    backgroundColor: '#1C1C1E', 
     borderTopLeftRadius: 24, 
     borderTopRightRadius: 24, 
     maxHeight: '80%',
     borderTopWidth: 4,
-    borderTopColor: '#FF6B35',  // Borde superior naranja
+    borderTopColor: '#F97316',  // Borde superior naranja
   },
   modalHeader: { 
     flexDirection: 'row', 
@@ -432,14 +476,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     padding: 20, 
     borderBottomWidth: 2, 
-    borderBottomColor: '#FFE5DC'  // Naranja muy claro
+    borderBottomColor: '#2C2C2E'
   },
   modalTitle: { 
     fontSize: 20, 
     fontWeight: 'bold', 
-    color: '#1A1A1A'  // Negro O2
+    color: '#F5F5F5'  // Negro O2
   },
-  modalClose: { fontSize: 28, color: '#6B7280' },
   groupButton: { 
     backgroundColor: '#2A2A2A',  // Gris oscuro
     margin: 16, 
@@ -448,8 +491,8 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF6B35',
-    shadowColor: '#FF6B35',
+    borderColor: '#F97316',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -463,49 +506,41 @@ const styles = StyleSheet.create({
   clientItem: { 
     padding: 16, 
     borderBottomWidth: 1, 
-    borderBottomColor: '#F3F4F6', 
+    borderBottomColor: '#2C2C2E',
     flexDirection: 'row', 
     alignItems: 'center' 
   },
-  clientItemSelected: { backgroundColor: '#FFF5F2' },  // Naranja muy suave
-  checkbox: { 
-    width: 24, 
-    height: 24, 
-    borderRadius: 12, 
-    borderWidth: 2, 
-    borderColor: '#FF6B35',  // Naranja O2
-    marginRight: 12, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  clientItemSelected: { backgroundColor: '#431407' },  // Naranja muy suave
+  checkbox: {
+    width: 24, height: 24, borderRadius: 12,
+    borderWidth: 2, borderColor: '#3F3F46',
+    marginRight: 12, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#2C2C2E',
   },
-  checkmark: { 
-    color: '#FF6B35',  // Naranja O2
-    fontSize: 16, 
-    fontWeight: 'bold' 
-  },
+  checkboxSelected: { borderColor: '#F97316', backgroundColor: '#431407' },
   clientName: { 
     fontSize: 16, 
     fontWeight: '600', 
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
     marginBottom: 4 
   },
-  clientEmail: { fontSize: 13, color: '#6B7280' },
+  clientEmail: { fontSize: 13, color: '#A1A1AA' },
   emptyText: { 
     textAlign: 'center', 
-    color: '#6B7280', 
+    color: '#A1A1AA', 
     fontSize: 14, 
     paddingVertical: 40 
   },
   confirmButton: { 
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
     margin: 16, 
     marginTop: 8, 
     padding: 16, 
     borderRadius: 12, 
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E55A2B',
-    shadowColor: '#FF6B35',
+    borderColor: '#EA6C0A',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -516,19 +551,35 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontWeight: 'bold' 
   },
-  groupItem: { 
-    padding: 16, 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#F3F4F6' 
+  groupItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E'
   },
   groupName: { 
     fontSize: 16, 
     fontWeight: '600', 
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
     marginBottom: 4 
   },
-  groupCount: { 
-    fontSize: 13, 
-    color: '#FF6B35'  // Naranja O2
+  groupCount: {
+    fontSize: 13,
+    color: '#F97316'
+  },
+  fabButton: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
   },
 });

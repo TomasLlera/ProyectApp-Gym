@@ -1,4 +1,4 @@
-// src/screens/Routines/GroupDetailScreen.js - CON WHATSAPP
+﻿// src/screens/Routines/GroupDetailScreen.js - CON WHATSAPP
 import React, { useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -11,6 +11,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
 import whatsappExportService from '../../services/whatsappExportService';
 
@@ -22,6 +23,19 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [availableClients, setAvailableClients] = useState([]);
+  const [expandedClients, setExpandedClients] = useState(new Set());
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState('');
+  const [showEjercicios, setShowEjercicios] = useState(false);
+
+  const toggleExpand = (clientId) => {
+    setExpandedClients(prev => {
+      const next = new Set(prev);
+      if (next.has(clientId)) next.delete(clientId);
+      else next.add(clientId);
+      return next;
+    });
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -335,8 +349,9 @@ export default function GroupDetailScreen({ route, navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Volver</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={20} color="#F97316" />
+          <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{group.nombre}</Text>
         <View style={styles.headerBadges}>
@@ -352,52 +367,48 @@ export default function GroupDetailScreen({ route, navigation }) {
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.actionBtnPrimary]}
-          onPress={openAddClientModal}
-        >
-          <Text style={styles.actionBtnIcon}>➕</Text>
-          <Text style={styles.actionBtnText}>Agregar Cliente</Text>
+        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnPrimary]} onPress={openAddClientModal}>
+          <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Agregar</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionBtn, styles.actionBtnSecondary]}
-          onPress={enviarDifusionGrupo}
+          style={[styles.actionBtn, styles.actionBtnPreview]}
+          onPress={() => {
+            const mensaje = crearMensajeRutinaGrupo();
+            setPreviewMessage(mensaje);
+            setShowPreviewModal(true);
+          }}
         >
-          <Text style={styles.actionBtnIcon}>📱</Text>
+          <Ionicons name="eye-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Preview</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={enviarDifusionGrupo}>
+          <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
           <Text style={styles.actionBtnText}>Difusión</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionBtn, styles.actionBtnDanger]}
-          onPress={deleteGroup}
-        >
-          <Text style={styles.actionBtnIcon}>🗑️</Text>
-          <Text style={styles.actionBtnText}>Eliminar</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* SECCIÓN DE VISTA PREVIA DEL MENSAJE */}
-      <View style={styles.previewSection}>
-        <Text style={styles.previewTitle}>📝 Vista Previa del Mensaje</Text>
-        <TouchableOpacity
-          style={styles.previewButton}
+          style={[styles.actionBtn, styles.actionBtnEdit]}
           onPress={() => {
-            const mensaje = crearMensajeRutinaGrupo();
             Alert.alert(
-              'Vista Previa',
-              mensaje,
+              'Editar Rutina',
+              `Esta acción actualizará la rutina para TODOS los ${group.cantidad} cliente(s) del grupo.\n\n¿Deseas continuar?`,
               [
-                { text: 'Cerrar', style: 'cancel' },
-                {
-                  text: '📤 Enviar Ahora',
-                  onPress: enviarDifusionGrupo
-                }
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Editar', onPress: () => navigation.navigate('CreateRoutine', { groupToEdit: group }) }
               ]
             );
           }}
         >
-          <Text style={styles.previewButtonText}>👁️ Ver Mensaje</Text>
+          <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Editar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={deleteGroup}>
+          <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Eliminar</Text>
         </TouchableOpacity>
       </View>
 
@@ -408,63 +419,121 @@ export default function GroupDetailScreen({ route, navigation }) {
 
 
           {group.clientes?.length > 0 ? (
-            group.clientes.map((cliente, index) => (
-              <View key={cliente.id || cliente._id || cliente.clienteId || `client-${index}`} style={styles.clientCard}>
-                <View style={styles.clientAvatar}>
-                  <Text style={styles.clientAvatarText}>
-                    {cliente.nombre?.charAt(0)}{cliente.apellido?.charAt(0)}
-                  </Text>
-                </View>
-                <View style={styles.clientInfo}>
-                  <Text style={styles.clientName}>
-                    {cliente.nombre} {cliente.apellido}
-                  </Text>
-                  <Text style={styles.clientEmail}>{cliente.email}</Text>
-                  {cliente.telefono && (
-                    <Text style={styles.clientPhone}>📱 {cliente.telefono}</Text>
+            group.clientes.map((cliente, index) => {
+              const clientId = cliente.id || cliente._id || cliente.clienteId || `client-${index}`;
+              const isExpanded = expandedClients.has(clientId);
+              return (
+                <View key={clientId} style={styles.clientCard}>
+                  {/* Fila principal compacta */}
+                  <View style={styles.clientRow}>
+                    <View style={styles.clientAvatar}>
+                      <Text style={styles.clientAvatarText}>
+                        {cliente.nombre?.charAt(0)}{cliente.apellido?.charAt(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.clientInfo}>
+                      <Text style={styles.clientName}>
+                        {cliente.nombre} {cliente.apellido}
+                      </Text>
+                      {cliente.telefono ? (
+                        <View style={styles.phoneRow}>
+                          <Ionicons name="call-outline" size={10} color="#25D366" />
+                          <Text style={styles.clientPhone}>{cliente.telefono}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.clientEmail}>{cliente.email}</Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.expandBtn}
+                      onPress={() => toggleExpand(clientId)}
+                    >
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={14}
+                        color={isExpanded ? '#F97316' : '#71717A'}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeClientFromGroup(cliente)}
+                    >
+                      <Ionicons name="trash-outline" size={13} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Detalle expandible */}
+                  {isExpanded && (
+                    <View style={styles.clientDetail}>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="calendar-outline" size={12} color="#71717A" />
+                        <Text style={styles.detailText}>
+                          {group.diasSemana?.length > 0
+                            ? group.diasSemana.map(d => d.slice(0, 3).toUpperCase()).join(' · ')
+                            : 'Sin días definidos'}
+                        </Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="timer-outline" size={12} color="#71717A" />
+                        <Text style={styles.detailText}>{group.duracionEstimada} min</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Ionicons name="barbell-outline" size={12} color="#71717A" />
+                        <Text style={styles.detailText}>{group.ejercicios?.length || 0} ejercicios</Text>
+                      </View>
+                    </View>
                   )}
                 </View>
-                <TouchableOpacity
-                  style={styles.removeButton}
-                  onPress={() => removeClientFromGroup(cliente)}
-                >
-                  <Text style={styles.removeButtonText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))
+              );
+            })
           ) : (
             <Text style={styles.emptyText}>No hay clientes en este grupo</Text>
           )}
         </View>
 
         {/* Info de la Rutina */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Información de la Rutina</Text>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Duración estimada</Text>
-            <Text style={styles.infoValue}>⏱️ {group.duracionEstimada} minutos</Text>
+        <View style={styles.infoBar}>
+          <View style={styles.infoStat}>
+            <Ionicons name="timer-outline" size={14} color="#71717A" />
+            <Text style={styles.infoStatText}>{group.duracionEstimada} min</Text>
           </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Días de entrenamiento</Text>
-            <View style={styles.daysContainer}>
-              {group.diasSemana?.map((dia) => (
-                <View key={dia} style={styles.dayChip}>
-                  <Text style={styles.dayChipText}>{dia.slice(0, 3).toUpperCase()}</Text>
-                </View>
-              ))}
-            </View>
+          <View style={styles.infoStatDot} />
+          <View style={styles.infoStat}>
+            <Ionicons name="barbell-outline" size={14} color="#71717A" />
+            <Text style={styles.infoStatText}>{group.ejercicios?.length || 0} ejerc.</Text>
+          </View>
+          <View style={styles.infoStatDot} />
+          <View style={styles.infoStatDays}>
+            {group.diasSemana?.map((dia) => (
+              <View key={dia} style={styles.dayChip}>
+                <Text style={styles.dayChipText}>{dia.slice(0, 3).toUpperCase()}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
         {/* Ejercicios */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Ejercicios ({group.ejercicios?.length || 0})
-          </Text>
+          <TouchableOpacity
+            style={styles.sectionToggleRow}
+            onPress={() => setShowEjercicios(v => !v)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.sectionTitle}>
+                Ejercicios ({group.ejercicios?.length || 0})
+              </Text>
+            </View>
+            <View style={styles.toggleChip}>
+              <Text style={styles.toggleChipText}>{showEjercicios ? 'Ocultar' : 'Ver'}</Text>
+              <Ionicons
+                name={showEjercicios ? 'chevron-up' : 'chevron-down'}
+                size={13}
+                color="#F97316"
+              />
+            </View>
+          </TouchableOpacity>
 
-          {group.ejercicios?.sort((a, b) => a.orden - b.orden).map((ejercicio, index) => (
+          {showEjercicios && group.ejercicios?.sort((a, b) => a.orden - b.orden).map((ejercicio, index) => (
             <View key={ejercicio.id || ejercicio._id || `ejercicio-${index}`} style={styles.exerciseCard}>
               <View style={styles.exerciseNumber}>
                 <Text style={styles.exerciseNumberText}>{index + 1}</Text>
@@ -474,20 +543,67 @@ export default function GroupDetailScreen({ route, navigation }) {
                 <Text style={styles.exerciseDetails}>
                   {ejercicio.series}x{ejercicio.repeticiones} • {ejercicio.peso} • {ejercicio.descanso}
                 </Text>
-                <View style={[styles.grupoMuscular, { backgroundColor: getGrupoColor(ejercicio.grupoMuscular) }]}>
-                  <Text style={styles.grupoMuscularText}>{ejercicio.grupoMuscular}</Text>
+                <View style={[styles.grupoMuscular, { backgroundColor: getGrupoColor(ejercicio.grupoMuscular) + '22', borderColor: getGrupoColor(ejercicio.grupoMuscular) + '60', borderWidth: 1 }]}>
+                  <Text style={[styles.grupoMuscularText, { color: getGrupoColor(ejercicio.grupoMuscular) }]}>{ejercicio.grupoMuscular}</Text>
                 </View>
               </View>
             </View>
           ))}
         </View>
-
-        <View style={styles.warningBox}>
-          <Text style={styles.warningText}>
-            ⚠️ Para editar esta rutina, se actualizará para TODOS los {group.cantidad} clientes del grupo
-          </Text>
-        </View>
       </ScrollView>
+
+      {/* Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#3B82F622', justifyContent: 'center', alignItems: 'center' }}>
+                  <Ionicons name="eye-outline" size={16} color="#3B82F6" />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Vista Previa</Text>
+                  <Text style={{ fontSize: 11, color: '#71717A' }}>Mensaje que recibirán los clientes</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowPreviewModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color="#A1A1AA" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Burbuja de chat */}
+            <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.chatBubble}>
+                <Text style={styles.chatBubbleText}>{previewMessage}</Text>
+              </View>
+              <Text style={styles.previewNote}>
+                Este mensaje se enviará a {group.clientes?.filter(c => c.telefono).length || 0} cliente(s) con WhatsApp
+              </Text>
+            </ScrollView>
+
+            <View style={styles.previewFooter}>
+              <TouchableOpacity
+                style={styles.previewCancelBtn}
+                onPress={() => setShowPreviewModal(false)}
+              >
+                <Text style={styles.previewCancelText}>Cerrar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.previewSendBtn}
+                onPress={() => { setShowPreviewModal(false); enviarDifusionGrupo(); }}
+              >
+                <Ionicons name="logo-whatsapp" size={16} color="#FFFFFF" />
+                <Text style={styles.previewSendText}>Enviar Difusión</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Add Client Modal */}
       <Modal
@@ -500,8 +616,8 @@ export default function GroupDetailScreen({ route, navigation }) {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Agregar Cliente al Grupo</Text>
-              <TouchableOpacity onPress={() => setShowAddClientModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity onPress={() => setShowAddClientModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color="#A1A1AA" />
               </TouchableOpacity>
             </View>
 
@@ -539,7 +655,7 @@ function getTipoColor(tipo) {
     cardio: '#F59E0B',
     resistencia: '#10B981',
     funcional: '#3B82F6',
-    personalizado: '#FF6B35'
+    personalizado: '#F97316'
   };
   return colors[tipo] || colors.personalizado;
 }
@@ -558,24 +674,30 @@ function getGrupoColor(grupo) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   header: {
     backgroundColor: '#1A1A1A',
     padding: 24,
     paddingTop: 48,
     borderBottomWidth: 3,
-    borderBottomColor: '#FF6B35',
-    shadowColor: '#FF6B35',
+    borderBottomColor: '#F97316',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   backButton: {
-    fontSize: 16,
-    color: '#FF6B35',
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#F97316',
     fontWeight: '600',
+    marginLeft: 2,
   },
   headerTitle: {
     fontSize: 24,
@@ -600,218 +722,240 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#FF8456'
+    color: '#F97316'
   },
   actions: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 10,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: '#1C1C1E',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#2C2C2E',
   },
   actionBtn: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 14,
+    paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    minHeight: 50,
+    gap: 4,
   },
-  actionBtnPrimary: {
-    backgroundColor: '#10B981',
-    borderColor: '#059669',
-  },
-  actionBtnSecondary: {
-    backgroundColor: '#25D366',
-    borderColor: '#128C7E',
-  },
-  actionBtnDanger: {
-    backgroundColor: '#EF4444',
-    borderColor: '#DC2626',
-  },
-  actionBtnIcon: {
-    fontSize: 18,
-    marginRight: 6,
-  },
+  actionBtnPrimary: { backgroundColor: '#10B981' },
+  actionBtnPreview: { backgroundColor: '#3B82F6' },
+  actionBtnSecondary: { backgroundColor: '#25D366' },
+  actionBtnEdit: { backgroundColor: '#F59E0B' },
+  actionBtnDanger: { backgroundColor: '#EF4444' },
   actionBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: '700',
     textAlign: 'center',
   },
 
-  // ============================================
-  // 📝 ESTILOS VISTA PREVIA
-  // ============================================
-  previewSection: {
-    backgroundColor: '#FFF5F2',
+  content: { flex: 1 },
+  section: {
+    backgroundColor: '#1C1C1E',
     margin: 16,
     marginTop: 0,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#FF6B35',
-  },
-  previewTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 8,
-  },
-  previewButton: {
-    backgroundColor: '#25D366',
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#128C7E',
-    shadowColor: '#25D366',
+    padding: 14,
+    borderRadius: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F97316',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
   },
-  previewButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-
-  content: { flex: 1 },
-  section: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
-    borderRadius: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',
-    borderWidth: 1,
-    borderColor: '#FFE5DC',
-    shadowColor: '#FF6B35',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 16
+    color: '#F5F5F5',
+    marginBottom: 0,
   },
-  clientCard: {
+  sectionToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  toggleChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF5F2',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
+    gap: 4,
+    backgroundColor: '#F9731622',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#FFD4C4',
+    borderColor: '#F9731640',
+  },
+  toggleChipText: {
+    fontSize: 11,
+    color: '#F97316',
+    fontWeight: '600',
+  },
+  clientCard: {
+    backgroundColor: '#1C1C1E',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    borderLeftWidth: 3,
+    borderLeftColor: '#F97316',
+  },
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   clientAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FF6B35',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F97316',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#E55A2B',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#EA6C0A',
   },
   clientAvatarText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold'
+    fontSize: 10,
+    fontWeight: '700',
   },
   clientInfo: { flex: 1 },
   clientName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#1A1A1A'
+    color: '#F5F5F5',
   },
   clientEmail: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2
+    fontSize: 11,
+    color: '#71717A',
+    marginTop: 1,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 1,
   },
   clientPhone: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#25D366',
-    marginTop: 2,
     fontWeight: '500',
   },
+  expandBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
   removeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FEE2E2',
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#450A0A',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: '#7C2D12',
   },
-  removeButtonText: {
-    color: '#DC2626',
-    fontSize: 18,
-    fontWeight: 'bold'
+  clientDetail: {
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+    marginTop: 8,
+    paddingTop: 8,
+    gap: 4,
   },
-  infoRow: { marginBottom: 16 },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  infoValue: {
-    fontSize: 16,
-    color: '#1A1A1A',
-    fontWeight: '600'
+  detailText: {
+    fontSize: 11,
+    color: '#71717A',
+    fontWeight: '500',
   },
-  daysContainer: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  infoBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  infoStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  infoStatText: {
+    fontSize: 12,
+    color: '#A1A1AA',
+    fontWeight: '500',
+  },
+  infoStatDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+  },
+  infoStatDays: {
+    flexDirection: 'row',
+    gap: 4,
+    flexWrap: 'wrap',
+  },
   dayChip: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#431407',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E55A2B',
+    borderWidth: 1,
+    borderColor: '#F97316',
   },
   dayChipText: {
-    color: '#FFFFFF',
+    color: '#EA6C0A',
     fontSize: 11,
-    fontWeight: 'bold'
+    fontWeight: '700',
   },
   exerciseCard: {
     flexDirection: 'row',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F0F0F',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderLeftWidth: 3,
-    borderLeftColor: '#FF6B35',
+    borderLeftColor: '#F97316',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#2C2C2E',
   },
   exerciseNumber: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#F97316',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#E55A2B',
+    borderColor: '#EA6C0A',
   },
   exerciseNumberText: {
     color: '#FFFFFF',
@@ -822,12 +966,12 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#F5F5F5',
     marginBottom: 4
   },
   exerciseDetails: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#A1A1AA',
     marginBottom: 6
   },
   grupoMuscular: {
@@ -835,30 +979,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   grupoMuscularText: {
-    color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase'
-  },
-  warningBox: {
-    backgroundColor: '#FFE5DC',
-    margin: 16,
-    marginTop: 0,
-    padding: 16,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',
-    borderWidth: 1,
-    borderColor: '#FFD4C4',
-  },
-  warningText: {
-    fontSize: 13,
-    color: '#E55A2B',
-    lineHeight: 18
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   modalOverlay: {
     flex: 1,
@@ -866,12 +991,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end'
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '70%',
     borderTopWidth: 4,
-    borderTopColor: '#FF6B35',
+    borderTopColor: '#F97316',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -879,36 +1004,96 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 2,
-    borderBottomColor: '#FFE5DC'
+    borderBottomColor: '#2C2C2E'
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1A1A1A'
+    color: '#F5F5F5'
   },
-  modalClose: {
-    fontSize: 28,
-    color: '#6B7280'
+  modalCloseBtn: {
+    padding: 4,
   },
   modalClientItem: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6'
+    borderBottomColor: '#2C2C2E'
   },
   modalClientName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#F5F5F5',
     marginBottom: 4
   },
   modalClientEmail: {
     fontSize: 13,
-    color: '#6B7280'
+    color: '#A1A1AA'
   },
   emptyText: {
     textAlign: 'center',
-    color: '#6B7280',
+    color: '#A1A1AA',
     fontSize: 14,
     paddingVertical: 40
+  },
+  chatBubble: {
+    backgroundColor: '#25D36618',
+    borderWidth: 1,
+    borderColor: '#25D36630',
+    borderRadius: 16,
+    borderTopLeftRadius: 4,
+    padding: 14,
+    marginBottom: 12,
+  },
+  chatBubbleText: {
+    fontSize: 13,
+    color: '#E4E4E7',
+    lineHeight: 20,
+    fontFamily: 'monospace',
+  },
+  previewNote: {
+    fontSize: 11,
+    color: '#52525B',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  previewFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  previewCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#2C2C2E',
+    alignItems: 'center',
+  },
+  previewCancelText: {
+    color: '#A1A1AA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  previewSendBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#25D366',
+    shadowColor: '#25D366',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  previewSendText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

@@ -1,4 +1,4 @@
-// src/screens/Profile/GoogleCalendarScreen.js
+﻿// src/screens/Profile/GoogleCalendarScreen.js
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -10,7 +10,8 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import googleCalendarService from '../../googleCalendar/googleCalendarService';
+import { Ionicons } from '@expo/vector-icons';
+import googleCalendarService from '../../services/googleCalendarService';
 
 export default function GoogleCalendarScreen({ navigation }) {
   const [isConnected, setIsConnected] = useState(false);
@@ -143,7 +144,7 @@ export default function GoogleCalendarScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B35" />
+        <ActivityIndicator size="large" color="#F97316" />
       </View>
     );
   }
@@ -161,9 +162,14 @@ export default function GoogleCalendarScreen({ navigation }) {
       {/* Status Card */}
       <View style={[
         styles.statusCard,
-        { backgroundColor: isConnected ? '#DCFCE7' : '#FEE2E2' }
+        { backgroundColor: isConnected ? '#052E16' : '#450A0A' }
       ]}>
-        <Text style={styles.statusEmoji}>{isConnected ? '✅' : '❌'}</Text>
+        <Ionicons
+          name={isConnected ? 'checkmark-circle' : 'close-circle'}
+          size={40}
+          color={isConnected ? '#10B981' : '#EF4444'}
+          style={{ marginRight: 16 }}
+        />
         <View style={styles.statusContent}>
           <Text style={styles.statusTitle}>
             {isConnected ? 'Conectado' : 'No Conectado'}
@@ -196,7 +202,10 @@ export default function GoogleCalendarScreen({ navigation }) {
 
       {/* Info */}
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>💡 ¿Cómo funciona?</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <Ionicons name="information-circle-outline" size={18} color="#F97316" />
+          <Text style={styles.infoTitle}>¿Cómo funciona?</Text>
+        </View>
         <Text style={styles.infoText}>
           • Conecta tu cuenta de Google{'\n'}
           • Crea rutinas para tus clientes{'\n'}
@@ -212,24 +221,24 @@ export default function GoogleCalendarScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F0F0F',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F0F0F',
   },
   header: {
     backgroundColor: '#1A1A1A',
     padding: 24,
     paddingTop: 48,
     borderBottomWidth: 3,
-    borderBottomColor: '#FF6B35',
+    borderBottomColor: '#F97316',
   },
   backButton: {
     fontSize: 16,
-    color: '#FF6B35',
+    color: '#F97316',
     marginBottom: 12,
     fontWeight: '600',
   },
@@ -245,31 +254,27 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
   },
-  statusEmoji: {
-    fontSize: 48,
-    marginRight: 16,
-  },
   statusContent: {
     flex: 1,
   },
   statusTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F5F5F5',
     marginBottom: 4,
   },
   statusDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
   },
   connectButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#F97316',
     margin: 16,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#E55A2B',
+    borderColor: '#EA6C0A',
   },
   connectButtonText: {
     color: '#FFFFFF',
@@ -307,22 +312,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     margin: 16,
     padding: 20,
     borderRadius: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',
+    borderLeftColor: '#F97316',
   },
   infoTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F5F5F5',
     marginBottom: 12,
   },
   infoText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
     lineHeight: 22,
   },
 });

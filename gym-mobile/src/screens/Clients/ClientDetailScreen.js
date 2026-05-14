@@ -1,4 +1,4 @@
-// src/screens/Clients/ClientDetailScreen.js
+﻿// src/screens/Clients/ClientDetailScreen.js
 import React, { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -14,17 +14,18 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { clientsAPI, calendarAPI } from '../../api/axios';
 import { useDatabase } from '../../context/DatabaseContext';
 
 export default function ClientDetailScreen({ route, navigation }) {
   const { clientId } = route.params;
-  console.log('ClientDetail recibió clientId:', clientId);  // DEBUG
 
   const [client, setClient] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const [uploadingCalendar, setUploadingCalendar] = useState(false);
 
   // AGREGAR ESTO
@@ -114,14 +115,7 @@ export default function ClientDetailScreen({ route, navigation }) {
   };
 
   const changePaymentStatus = () => {
-    const options = [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: '✅ Marcar como Pagado', onPress: () => updatePaymentStatus('pagado') },
-      { text: '⚠️ Marcar como Vencido', onPress: () => updatePaymentStatus('vencido') },
-      { text: '⏳ Marcar como Pendiente', onPress: () => updatePaymentStatus('pendiente') },
-    ];
-
-    Alert.alert('Cambiar Estado de Pago', 'Selecciona el nuevo estado:', options);
+    setShowStatusModal(true);
   };
 
   const updatePaymentStatus = async (status) => {
@@ -180,8 +174,13 @@ export default function ClientDetailScreen({ route, navigation }) {
   };
 
   const getStatusLabel = (status) => {
-    const labels = { pagado: '✅ Al día', vencido: '⚠️ Vencido', pendiente: '⏳ Pendiente' };
+    const labels = { pagado: 'Al día', vencido: 'Vencido', pendiente: 'Pendiente' };
     return labels[status] || labels.pendiente;
+  };
+
+  const getStatusIcon = (status) => {
+    const icons = { pagado: 'checkmark-circle', vencido: 'alert-circle', pendiente: 'time' };
+    return icons[status] || icons.pendiente;
   };
 
   const getVencimientoInfo = (fechaVencimiento) => {
@@ -218,80 +217,46 @@ export default function ClientDetailScreen({ route, navigation }) {
 
         <TouchableOpacity
           style={[styles.statusBadge, {
-            backgroundColor: getStatusColor(client.estadoPago),
-            borderWidth: 2,
-            borderColor: getStatusColor(client.estadoPago) + '80',
+            backgroundColor: getStatusColor(client.estadoPago) + '22',
+            borderColor: getStatusColor(client.estadoPago),
             shadowColor: getStatusColor(client.estadoPago),
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-            elevation: 4,
           }]}
           onPress={changePaymentStatus}
+          activeOpacity={0.75}
         >
-          <Text style={styles.statusText}>{getStatusLabel(client.estadoPago)}</Text>
-          <Text style={styles.statusHint}>(toca para cambiar)</Text>
+          <Ionicons name={getStatusIcon(client.estadoPago)} size={20} color={getStatusColor(client.estadoPago)} />
+          <Text style={[styles.statusText, { color: getStatusColor(client.estadoPago) }]}>
+            {getStatusLabel(client.estadoPago)}
+          </Text>
+          <Ionicons name="chevron-down" size={14} color={getStatusColor(client.estadoPago) + 'AA'} style={{ marginLeft: 2 }} />
         </TouchableOpacity>
       </View>
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={[styles.actionButton, {
-            backgroundColor: '#3B82F6',
-            borderWidth: 2,
-            borderColor: '#1E40AF'
-          }]}
-          onPress={() => setShowEditModal(true)}
-        >
-          <Text style={styles.actionButtonText}>✏️ Editar</Text>
+        <TouchableOpacity style={[styles.actionBtn, { borderColor: '#1E40AF' }]} onPress={() => setShowEditModal(true)}>
+          <Ionicons name="create-outline" size={20} color="#3B82F6" />
+          <Text style={[styles.actionBtnLabel, { color: '#3B82F6' }]}>Editar</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, {
-            backgroundColor: '#8B5CF6',
-            borderWidth: 2,
-            borderColor: '#6D28D9'
-          }]}
-          onPress={subirRutinasACalendar}
-          disabled={uploadingCalendar}
-        >
-          <Text style={styles.actionButtonText}>
-            {uploadingCalendar ? '⏳ Enviando...' : '📅 Google Calendar'}
-          </Text>
+        <TouchableOpacity style={[styles.actionBtn, { borderColor: '#6D28D9' }]} onPress={subirRutinasACalendar} disabled={uploadingCalendar}>
+          <Ionicons name={uploadingCalendar ? 'time-outline' : 'calendar-outline'} size={20} color="#8B5CF6" />
+          <Text style={[styles.actionBtnLabel, { color: '#8B5CF6' }]}>Calendar</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, {
-            backgroundColor: '#F97316',
-            borderWidth: 2,
-            borderColor: '#C2410C'
-          }]}
-          onPress={sendEmail}
-        >
-          <Text style={styles.actionButtonText}>📧 Email</Text>
+        <TouchableOpacity style={[styles.actionBtn, { borderColor: '#C2410C' }]} onPress={sendEmail}>
+          <Ionicons name="mail-outline" size={20} color="#F97316" />
+          <Text style={[styles.actionBtnLabel, { color: '#F97316' }]}>Email</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, {
-            backgroundColor: '#10B981',
-            borderWidth: 2,
-            borderColor: '#047857'
-          }]}
-          onPress={sendWhatsApp}
-        >
-          <Text style={styles.actionButtonText}>💬 WhatsApp</Text>
+        <TouchableOpacity style={[styles.actionBtn, { borderColor: '#047857' }]} onPress={sendWhatsApp}>
+          <Ionicons name="logo-whatsapp" size={20} color="#10B981" />
+          <Text style={[styles.actionBtnLabel, { color: '#10B981' }]}>WhatsApp</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, {
-            backgroundColor: '#EF4444',
-            borderWidth: 2,
-            borderColor: '#B91C1C'
-          }]}
-          onPress={deleteClient}
-        >
-          <Text style={styles.actionButtonText}>🗑️ Eliminar</Text>
+        <TouchableOpacity style={[styles.actionBtn, { borderColor: '#B91C1C' }]} onPress={deleteClient}>
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          <Text style={[styles.actionBtnLabel, { color: '#EF4444' }]}>Eliminar</Text>
         </TouchableOpacity>
       </View>
 
@@ -301,21 +266,8 @@ export default function ClientDetailScreen({ route, navigation }) {
 
         <InfoRow label="DNI" value={client.documento} />
         <InfoRow label="Teléfono" value={client.telefono || 'No registrado'} />
-        <InfoRow label="Email" value={client.email} />
-        <InfoRow label="Tipo de Plan" value={client.tipoPlan?.toUpperCase() || 'MENSUAL'} />
-        <InfoRow label="Fecha de registro" value={new Date(client.fechaRegistro).toLocaleDateString('es-AR')} />
-        <InfoRow
-          label="Último pago"
-          value={client.fechaUltimoPago ? new Date(client.fechaUltimoPago).toLocaleDateString('es-AR') : 'Sin pagos'}
-        />
-        <InfoRow
-          label="Fecha de vencimiento"
-          value={client.fechaVencimiento ? new Date(client.fechaVencimiento).toLocaleDateString('es-AR') : 'No registrada'}
-        />
-        <InfoRow
-          label="Estado vencimiento"
-          value={getVencimientoInfo(client.fechaVencimiento)}
-        />
+        <InfoRow label="Plan" value={client.tipoPlan?.toUpperCase() || 'MENSUAL'} />
+        <InfoRow label="Vencimiento" value={getVencimientoInfo(client.fechaVencimiento)} />
         <InfoRow label="Cuota mensual" value={`$${client.montoMensual?.toLocaleString()}`} highlight />
       </View>
 
@@ -324,7 +276,7 @@ export default function ClientDetailScreen({ route, navigation }) {
         <Text style={styles.sectionTitle}>Historial de Pagos ({payments.length})</Text>
         {payments.length === 0 ? (
           <View style={styles.emptyPayments}>
-            <Text style={styles.emptyEmoji}>💰</Text>
+            <Ionicons name="cash-outline" size={48} color="#3F3F46" style={{ marginBottom: 12 }} />
             <Text style={styles.emptyText}>Sin pagos registrados</Text>
           </View>
         ) : (
@@ -341,6 +293,62 @@ export default function ClientDetailScreen({ route, navigation }) {
           ))
         )}
       </View>
+
+      {/* Status Modal */}
+      <Modal
+        visible={showStatusModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowStatusModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.statusModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowStatusModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}>
+            <View style={styles.statusModalContent}>
+              <View style={styles.statusModalHandle} />
+              <Text style={styles.statusModalTitle}>Estado de pago</Text>
+              <Text style={styles.statusModalSubtitle}>{client?.nombre} {client?.apellido}</Text>
+
+              {[
+                { value: 'pagado',   label: 'Al día',    desc: 'El cliente está al corriente',       icon: 'checkmark-circle', color: '#10B981', bg: '#052E16' },
+                { value: 'pendiente', label: 'Pendiente', desc: 'Pago pendiente de confirmación',     icon: 'time',             color: '#F59E0B', bg: '#422006' },
+                { value: 'vencido',  label: 'Vencido',   desc: 'La cuota venció sin pago',           icon: 'alert-circle',     color: '#EF4444', bg: '#450A0A' },
+              ].map(({ value, label, desc, icon, color, bg }) => {
+                const isCurrent = client?.estadoPago === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    style={[styles.statusOption, { borderColor: isCurrent ? color : '#2C2C2E', backgroundColor: isCurrent ? bg : '#1C1C1E' }]}
+                    onPress={() => {
+                      setShowStatusModal(false);
+                      updatePaymentStatus(value);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.statusOptionIcon, { backgroundColor: color + '22', borderColor: color + '55' }]}>
+                      <Ionicons name={icon} size={22} color={color} />
+                    </View>
+                    <View style={styles.statusOptionInfo}>
+                      <Text style={[styles.statusOptionLabel, { color: isCurrent ? color : '#F5F5F5' }]}>{label}</Text>
+                      <Text style={styles.statusOptionDesc}>{desc}</Text>
+                    </View>
+                    {isCurrent && (
+                      <Ionicons name="checkmark-circle" size={20} color={color} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+
+              <TouchableOpacity style={styles.statusModalCancel} onPress={() => setShowStatusModal(false)}>
+                <Text style={styles.statusModalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Edit Modal */}
       <EditClientModal
@@ -426,7 +434,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Editar Cliente</Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.modalClose}>✕</Text>
+              <Ionicons name="close" size={22} color="#A1A1AA" />
             </TouchableOpacity>
           </View>
 
@@ -440,7 +448,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
                 placeholder="Nombre *" 
                 value={formData.nombre} 
                 onChangeText={(text) => setFormData({ ...formData, nombre: text })} 
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#71717A"
               />
               
               <TextInput 
@@ -448,7 +456,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
                 placeholder="Apellido *" 
                 value={formData.apellido} 
                 onChangeText={(text) => setFormData({ ...formData, apellido: text })} 
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#71717A"
               />
               
               <TextInput 
@@ -463,7 +471,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
                 }} 
                 keyboardType="numeric"
                 maxLength={8}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#71717A"
               />
               
               <TextInput 
@@ -473,7 +481,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
                 onChangeText={(text) => setFormData({ ...formData, email: text })} 
                 keyboardType="email-address" 
                 autoCapitalize="none"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#71717A"
               />
             </View>
 
@@ -493,7 +501,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
                   }}
                   keyboardType="phone-pad"
                   maxLength={15}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor="#71717A"
                 />
               </View>
             </View>
@@ -528,7 +536,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
                   setFormData({ ...formData, montoMensual: numbersOnly });
                 }} 
                 keyboardType="numeric"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#71717A"
               />
             </View>
 
@@ -538,7 +546,7 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
               disabled={loading}
             >
               <Text style={styles.submitButtonText}>
-                {loading ? 'Guardando...' : '✅ Guardar Cambios'}
+                {loading ? 'Guardando...' : 'Guardar Cambios'}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -549,16 +557,16 @@ function EditClientModal({ visible, client, onClose, onSuccess }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { fontSize: 16, color: '#6B7280' },
+  loadingText: { fontSize: 16, color: '#A1A1AA' },
   header: {
     backgroundColor: '#1A1A1A',  // Negro O2
     padding: 24,
     alignItems: 'center',
     borderBottomWidth: 3,
-    borderBottomColor: '#FF6B35',  // Naranja O2
-    shadowColor: '#FF6B35',
+    borderBottomColor: '#F97316',  // Naranja O2
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -568,13 +576,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 3,
-    borderColor: '#E55A2B',
-    shadowColor: '#FF6B35',
+    borderColor: '#EA6C0A',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -582,103 +590,109 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 32, color: '#FFFFFF', fontWeight: 'bold' },
   clientName: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8 },
-  clientEmail: { fontSize: 14, color: '#FF8456', marginBottom: 12 },  // Naranja claro
+  clientEmail: { fontSize: 14, color: '#F97316', marginBottom: 12 },  // Naranja claro
   statusBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  statusText: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
-  statusHint: { color: '#fff', fontSize: 10, opacity: 0.8, textAlign: 'center', marginTop: 2 },
+  statusText: { fontSize: 16, fontWeight: '800' },
   actionButtons: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-    gap: 8
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
   },
-  actionButton: {
+  actionBtn: {
     flex: 1,
-    minWidth: '45%',
-    padding: 12,
-    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  actionButtonText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  section: {
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 16,
+    backgroundColor: '#1C1C1E',
+    paddingVertical: 10,
     borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  actionBtnLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  section: {
+    backgroundColor: '#1C1C1E',
+    margin: 16,
+    padding: 14,
+    borderRadius: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#2C2C2E',
   },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 16 },  // Negro O2
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#F5F5F5', marginBottom: 16 },  // Negro O2
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#2C2C2E',
     paddingHorizontal: 4,
   },
   infoRowHighlight: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#1A2A1A',
     borderRadius: 8,
     paddingHorizontal: 12,
-    borderBottomColor: '#DBEAFE',
+    borderBottomColor: '#2C2C2E',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#16A34A',
   },
-  infoLabel: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
-  infoValue: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  infoValueHighlight: { fontSize: 18, color: '#3B82F6', fontWeight: 'bold' },
+  infoLabel: { fontSize: 14, color: '#A1A1AA', fontWeight: '500' },
+  infoValue: { fontSize: 14, fontWeight: '600', color: '#F5F5F5' },
+  infoValueHighlight: { fontSize: 18, color: '#16A34A', fontWeight: 'bold' },
   emptyPayments: { alignItems: 'center', paddingVertical: 40 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: '#6B7280' },
-  paymentCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 16, borderRadius: 8, marginBottom: 8 },
-  paymentDate: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
-  paymentMethod: { fontSize: 12, color: '#6B7280' },
+  emptyText: { fontSize: 16, color: '#A1A1AA' },
+  paymentCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0F0F0F', padding: 16, borderRadius: 8, marginBottom: 8 },
+  paymentDate: { fontSize: 14, fontWeight: '600', color: '#F5F5F5', marginBottom: 4 },
+  paymentMethod: { fontSize: 12, color: '#A1A1AA' },
   paymentAmount: { fontSize: 20, fontWeight: 'bold', color: '#10B981' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
-  modalClose: { fontSize: 28, color: '#6B7280' },
+  modalContent: { backgroundColor: '#1C1C1E', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#2C2C2E' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#F5F5F5' },
   formContainer: { padding: 20 },
   sectionContainer: {
     marginBottom: 24,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#2C2C2E',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#F5F5F5',
     marginBottom: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  input: { 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 12, 
-    padding: 16, 
-    fontSize: 16, 
-    marginBottom: 16, 
-    color: '#000000', 
-    borderWidth: 1, 
-    borderColor: '#E5E7EB',
+  input: {
+    backgroundColor: '#0F0F0F',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 16,
+    color: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -691,14 +705,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   phonePrefix: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#2C2C2E',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#2C2C2E',
     marginRight: 8,
     minWidth: 60,
     textAlign: 'center',
@@ -708,37 +722,100 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   planSelector: { marginBottom: 16 },
-  planLabel: { fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 12 },
+  planLabel: { fontSize: 14, fontWeight: '600', color: '#F5F5F5', marginBottom: 12 },
   planOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  planChip: { 
-    paddingVertical: 10, 
-    paddingHorizontal: 14, 
-    borderRadius: 12, 
-    backgroundColor: '#F3F4F6', 
-    borderWidth: 2, 
-    borderColor: '#F3F4F6' 
+  planChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#2C2C2E',
+    borderWidth: 1,
+    borderColor: '#3F3F46'
   },
-  planChipActive: { 
-    backgroundColor: '#FFF3ED', 
-    borderColor: '#FF6B35' 
+  planChipActive: {
+    backgroundColor: '#431407',
+    borderColor: '#F97316'
   },
-  planChipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
-  planChipTextActive: { color: '#FF6B35', fontWeight: '700' },
+  planChipText: { fontSize: 13, fontWeight: '600', color: '#A1A1AA' },
+  planChipTextActive: { color: '#F97316', fontWeight: '700' },
   submitButton: { 
-    backgroundColor: '#FF6B35', 
+    backgroundColor: '#F97316', 
     borderRadius: 12, 
     padding: 16, 
     alignItems: 'center', 
     marginTop: 8, 
     marginBottom: 30,
-    shadowColor: '#FF6B35',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
     borderWidth: 2,
-    borderColor: '#E55A2B',
+    borderColor: '#EA6C0A',
   },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+
+  // Status modal
+  statusModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  statusModalContent: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 36,
+    borderTopWidth: 3,
+    borderTopColor: '#F97316',
+  },
+  statusModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#3F3F46',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  statusModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#F5F5F5',
+    marginBottom: 4,
+  },
+  statusModalSubtitle: {
+    fontSize: 13,
+    color: '#71717A',
+    marginBottom: 20,
+  },
+  statusOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 10,
+    gap: 14,
+  },
+  statusOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusOptionInfo: { flex: 1 },
+  statusOptionLabel: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  statusOptionDesc: { fontSize: 12, color: '#71717A' },
+  statusModalCancel: {
+    marginTop: 6,
+    padding: 14,
+    alignItems: 'center',
+    borderRadius: 14,
+    backgroundColor: '#2C2C2E',
+  },
+  statusModalCancelText: { fontSize: 15, fontWeight: '600', color: '#A1A1AA' },
 });

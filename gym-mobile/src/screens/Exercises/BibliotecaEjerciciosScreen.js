@@ -1,4 +1,4 @@
-// src/screens/Exercises/BibliotecaEjerciciosScreen.js
+﻿// src/screens/Exercises/BibliotecaEjerciciosScreen.js
 
 import React, { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { bibliotecaEjerciciosService } from '../../database/bibliotecaEjerciciosService';
 
 export default function BibliotecaEjerciciosScreen({ navigation }) {
@@ -28,6 +29,7 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedEjercicio, setSelectedEjercicio] = useState(null);
   const [estadisticas, setEstadisticas] = useState(null);
+  const [seeding, setSeeding] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -73,6 +75,34 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
     }
   };
 
+  const handleSeedCardio = async () => {
+    setSeeding(true);
+    try {
+      const creados = await bibliotecaEjerciciosService.seedCardioEjercicios();
+      Alert.alert('Cardio cargado', creados > 0 ? `${creados} ejercicios de cardio agregados a la biblioteca.` : 'Los ejercicios de cardio ya estaban cargados.');
+      loadEjercicios();
+      loadEstadisticas();
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar los ejercicios de cardio');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleSeedAll = async () => {
+    setSeeding(true);
+    try {
+      const creados = await bibliotecaEjerciciosService.crearEjerciciosPredeterminados();
+      Alert.alert('Biblioteca cargada', creados > 0 ? `${creados} ejercicios predefinidos agregados.` : 'Los ejercicios ya estaban cargados.');
+      loadEjercicios();
+      loadEstadisticas();
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar los ejercicios predefinidos');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const deleteEjercicio = (ejercicio) => {
     Alert.alert(
       'Eliminar Ejercicio',
@@ -112,44 +142,58 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
         <View style={styles.cardInfo}>
           <Text style={styles.ejercicioName}>{item.nombre}</Text>
           <View style={styles.badges}>
-            <View style={[styles.badge, { backgroundColor: getGrupoColor(item.grupoMuscular) }]}>
-              <Text style={styles.badgeText}>{item.grupoMuscular}</Text>
+            <View style={[styles.badge, { backgroundColor: getGrupoColor(item.grupoMuscular) + '22', borderColor: getGrupoColor(item.grupoMuscular) + '60' }]}>
+              <Text style={[styles.badgeText, { color: getGrupoColor(item.grupoMuscular) }]}>{item.grupoMuscular?.toUpperCase()}</Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: getDificultadColor(item.dificultad) }]}>
-              <Text style={styles.badgeText}>{item.dificultad}</Text>
+            <View style={[styles.badge, { backgroundColor: getDificultadColor(item.dificultad) + '22', borderColor: getDificultadColor(item.dificultad) + '60' }]}>
+              <Text style={[styles.badgeText, { color: getDificultadColor(item.dificultad) }]}>{item.dificultad?.toUpperCase()}</Text>
             </View>
           </View>
           {item.equipamiento && (
-            <Text style={styles.equipamiento}>🏋️ {item.equipamiento}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
+              <Ionicons name="barbell-outline" size={12} color="#71717A" />
+              <Text style={styles.equipamiento}>{item.equipamiento}</Text>
+            </View>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.favoritoBtn}
-          onPress={() => toggleFavorito(item.id)}
-        >
-          <Text style={styles.favoritoIcon}>{item.favorito ? '⭐' : '☆'}</Text>
-        </TouchableOpacity>
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => deleteEjercicio(item)}
+          >
+            <Ionicons name="trash-outline" size={16} color="#DC2626" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.favoritoBtn}
+            onPress={() => toggleFavorito(item.id)}
+          >
+            <Ionicons
+              name={item.favorito ? 'star' : 'star-outline'}
+              size={18}
+              color={item.favorito ? '#F59E0B' : '#3F3F46'}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={styles.cardFooter}>
-        <Text style={styles.detailText}>
-          {item.seriesSugeridas}x{item.repeticionesSugeridas}
-        </Text>
-        <Text style={styles.detailText}>•</Text>
-        <Text style={styles.detailText}>{item.descansoSugerido}</Text>
+        <View style={styles.statItem}>
+          <Ionicons name="repeat-outline" size={12} color="#71717A" />
+          <Text style={styles.detailText}>{item.seriesSugeridas}x{item.repeticionesSugeridas}</Text>
+        </View>
+        <View style={styles.statDot} />
+        <View style={styles.statItem}>
+          <Ionicons name="timer-outline" size={12} color="#71717A" />
+          <Text style={styles.detailText}>{item.descansoSugerido}</Text>
+        </View>
         {item.usosCount > 0 && (
           <>
-            <Text style={styles.detailText}>•</Text>
-            <Text style={styles.usosText}>📊 {item.usosCount} usos</Text>
+            <View style={styles.statDot} />
+            <View style={styles.statItem}>
+              <Ionicons name="bar-chart-outline" size={12} color="#F97316" />
+              <Text style={styles.usosText}>{item.usosCount} usos</Text>
+            </View>
           </>
         )}
-      </View>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.deleteBtn}
-          onPress={() => deleteEjercicio(item)}
-        >
-          <Text style={styles.deleteBtnText}>🗑️ Eliminar</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -158,13 +202,14 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Volver</Text>
+        <TouchableOpacity style={styles.backButtonRow} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={20} color="#F97316" />
+          <Text style={styles.backButton}>Volver</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>📚 Biblioteca de Ejercicios</Text>
+        <Text style={styles.headerTitle}>Biblioteca de Ejercicios</Text>
         {estadisticas && (
           <Text style={styles.headerSubtitle}>
-            {estadisticas.total} ejercicio(s) • {estadisticas.favoritos} favorito(s)
+            {estadisticas.total} ejercicios · {estadisticas.favoritos} favoritos
           </Text>
         )}
       </View>
@@ -172,11 +217,11 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
 
       {/* Búsqueda */}
       <View style={styles.searchContainer}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Ionicons name="search" size={18} color="#71717A" style={{ marginRight: 8 }} />
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar ejercicio..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#71717A"
           value={searchTerm}
           onChangeText={setSearchTerm}
         />
@@ -184,7 +229,7 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
           style={[styles.favFilterBtn, soloFavoritos && styles.favFilterBtnActive]}
           onPress={() => setSoloFavoritos(!soloFavoritos)}
         >
-          <Text style={styles.favFilterText}>⭐</Text>
+          <Ionicons name="star" size={18} color={soloFavoritos ? '#F59E0B' : '#71717A'} />
         </TouchableOpacity>
       </View>
 
@@ -224,9 +269,50 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>🏋️</Text>
-            <Text style={styles.emptyText}>No hay ejercicios</Text>
-            <Text style={styles.emptySubtext}>Presiona el botón + para crear tu primer ejercicio</Text>
+            <Ionicons
+              name={grupoFilter === 'cardio' ? 'heart-outline' : 'barbell-outline'}
+              size={64} color="#3F3F46" style={{ marginBottom: 16 }}
+            />
+            <Text style={styles.emptyText}>
+              {grupoFilter === 'cardio' ? 'Sin ejercicios de cardio' : 'No hay ejercicios'}
+            </Text>
+            {grupoFilter === 'cardio' ? (
+              <>
+                <Text style={styles.emptySubtext}>
+                  Cargá 15 ejercicios de cardio predefinidos (LISS, HIIT, funcional)
+                </Text>
+                <TouchableOpacity
+                  style={[styles.seedBtn, seeding && { opacity: 0.6 }]}
+                  onPress={handleSeedCardio}
+                  disabled={seeding}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="flash-outline" size={16} color="#fff" />
+                    <Text style={styles.seedBtnText}>
+                      {seeding ? 'Cargando...' : 'Cargar ejercicios de cardio'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.emptySubtext}>
+                  Cargá todos los ejercicios predefinidos o presioná + para crear uno
+                </Text>
+                <TouchableOpacity
+                  style={[styles.seedBtn, seeding && { opacity: 0.6 }]}
+                  onPress={handleSeedAll}
+                  disabled={seeding}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="library-outline" size={16} color="#fff" />
+                    <Text style={styles.seedBtnText}>
+                      {seeding ? 'Cargando...' : 'Cargar todos los predefinidos'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         }
       />
@@ -236,7 +322,7 @@ export default function BibliotecaEjerciciosScreen({ navigation }) {
         style={styles.fab}
         onPress={() => setShowCreateModal(true)}
       >
-        <Text style={styles.fabText}>➕</Text>
+        <Ionicons name="add" size={32} color="#FFFFFF" />
       </TouchableOpacity>
 
       {/* Create Modal */}
@@ -316,8 +402,8 @@ function CreateEjercicioModal({ visible, onClose, onSuccess }) {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Nuevo Ejercicio</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.modalClose}>✕</Text>
+            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+              <Ionicons name="close" size={22} color="#A1A1AA" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.formContainer}>
@@ -464,8 +550,8 @@ function EditEjercicioModal({ visible, ejercicio, onClose, onSuccess }) {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Editar Ejercicio</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.modalClose}>✕</Text>
+            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+              <Ionicons name="close" size={22} color="#A1A1AA" />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.formContainer}>
@@ -581,71 +667,83 @@ function getDificultadColor(dificultad) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#0F0F0F' },
   header: {
     backgroundColor: '#1A1A1A',
     padding: 24,
     paddingTop: 48,
     borderBottomWidth: 3,
-    borderBottomColor: '#FF6B35',
+    borderBottomColor: '#F97316',
   },
-  backButton: { fontSize: 16, color: '#FF6B35', marginBottom: 12, fontWeight: '600' },
+  backButtonRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  backButton: { fontSize: 16, color: '#F97316', fontWeight: '600', marginLeft: 2 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 4 },
-  headerSubtitle: { fontSize: 14, color: '#FF8456' },
-  emptySubtext: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', margin: 16, marginBottom: 8, paddingHorizontal: 16, borderRadius: 12, borderWidth: 2, borderColor: '#E5E7EB' },
+  headerSubtitle: { fontSize: 14, color: '#F97316' },
+  emptySubtext: { fontSize: 14, color: '#A1A1AA', marginTop: 8, textAlign: 'center' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1C1C1E', margin: 16, marginBottom: 8, paddingHorizontal: 16, borderRadius: 12, borderWidth: 2, borderColor: '#2C2C2E' },
   searchIcon: { fontSize: 20, marginRight: 8 },
-  searchInput: { flex: 1, padding: 12, fontSize: 16, color: '#1A1A1A' },
-  favFilterBtn: { padding: 8, borderRadius: 8, backgroundColor: '#F3F4F6' },
-  favFilterBtnActive: { backgroundColor: '#FFE5DC' },
+  searchInput: { flex: 1, padding: 12, fontSize: 16, color: '#F5F5F5' },
+  favFilterBtn: { padding: 8, borderRadius: 8, backgroundColor: '#2C2C2E' },
+  favFilterBtnActive: { backgroundColor: '#431407' },
   favFilterText: { fontSize: 20 },
-  filtersScroll: { backgroundColor: '#FFFFFF', paddingVertical: 12 },
+  filtersScroll: { backgroundColor: '#1C1C1E', paddingVertical: 12 },
   filters: { paddingHorizontal: 16, gap: 8 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 2, borderColor: '#E5E7EB' },
-  filterChipActive: { backgroundColor: '#FF6B35', borderColor: '#E55A2B' },
-  filterText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#2C2C2E', borderWidth: 2, borderColor: '#2C2C2E' },
+  filterChipActive: { backgroundColor: '#F97316', borderColor: '#EA6C0A' },
+  filterText: { fontSize: 13, fontWeight: '600', color: '#A1A1AA' },
   filterTextActive: { color: '#FFFFFF' },
   list: { padding: 16 },
-  ejercicioCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  ejercicioCard: { backgroundColor: '#1C1C1E', borderRadius: 12, padding: 16, marginBottom: 12, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   cardInfo: { flex: 1 },
-  ejercicioName: { fontSize: 17, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 8 },
+  ejercicioName: { fontSize: 17, fontWeight: 'bold', color: '#F5F5F5', marginBottom: 8 },
   badges: { flexDirection: 'row', gap: 6, marginBottom: 6 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
-  equipamiento: { fontSize: 12, color: '#6B7280', marginTop: 4 },
-  favoritoBtn: { padding: 4 },
-  favoritoIcon: { fontSize: 28 },
-  cardFooter: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  detailText: { fontSize: 13, color: '#6B7280' },
-  usosText: { fontSize: 13, color: '#FF6B35', fontWeight: '600' },
-  actions: { flexDirection: 'row', gap: 8 },
-  deleteBtn: { flex: 1, backgroundColor: '#FEE2E2', padding: 10, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#FCA5A5' },
-  deleteBtnText: { color: '#DC2626', fontSize: 13, fontWeight: 'bold' },
+  badge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  equipamiento: { fontSize: 12, color: '#71717A' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  iconBtn: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#DC262618', justifyContent: 'center', alignItems: 'center',
+  },
+  favoritoBtn: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#2C2C2E', justifyContent: 'center', alignItems: 'center',
+  },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#3F3F46' },
+  detailText: { fontSize: 12, color: '#71717A', fontWeight: '500' },
+  usosText: { fontSize: 12, color: '#F97316', fontWeight: '600' },
   emptyContainer: { padding: 40, alignItems: 'center' },
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 18, color: '#1A1A1A', fontWeight: '600', marginBottom: 24 },
-  emptyButton: { backgroundColor: '#FF6B35', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, borderWidth: 2, borderColor: '#E55A2B' },
-  emptyButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
-  fab: { position: 'absolute', right: 20, bottom: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: '#FF6B35', justifyContent: 'center', alignItems: 'center', shadowColor: '#FF6B35', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 12, borderWidth: 3, borderColor: '#FFFFFF' },
+  emptyText: { fontSize: 18, color: '#F5F5F5', fontWeight: '600', marginBottom: 24 },
+  seedBtn: {
+    marginTop: 16, backgroundColor: '#F97316',
+    paddingHorizontal: 24, paddingVertical: 12,
+    borderRadius: 12, borderWidth: 2, borderColor: '#EA6C0A',
+    shadowColor: '#F97316', shadowOpacity: 0.4, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 }, elevation: 6,
+  },
+  seedBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
+  fab: { position: 'absolute', right: 20, bottom: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: '#F97316', justifyContent: 'center', alignItems: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 12, borderWidth: 3, borderColor: '#FFFFFF' },
   fabText: { fontSize: 28, color: '#FFFFFF', fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(26, 26, 26, 0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%', borderTopWidth: 4, borderTopColor: '#FF6B35' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 2, borderBottomColor: '#FFE5DC' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1A1A1A' },
-  modalClose: { fontSize: 28, color: '#6B7280' },
+  modalContent: { backgroundColor: '#1C1C1E', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%', borderTopWidth: 4, borderTopColor: '#F97316' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#2C2C2E' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#F5F5F5' },
   formContainer: { padding: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: { backgroundColor: '#F3F4F6', borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB', color: '#1A1A1A' },
+  label: { fontSize: 14, fontWeight: '600', color: '#F5F5F5', marginBottom: 8 },
+  input: { backgroundColor: '#2C2C2E', borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#2C2C2E', color: '#F5F5F5' },
   textArea: { height: 80, textAlignVertical: 'top' },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 2, borderColor: '#E5E7EB' },
-  chipActive: { backgroundColor: '#FF6B35', borderColor: '#E55A2B' },
-  chipText: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
+  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: '#2C2C2E', borderWidth: 2, borderColor: '#2C2C2E' },
+  chipActive: { backgroundColor: '#F97316', borderColor: '#EA6C0A' },
+  chipText: { fontSize: 13, fontWeight: '600', color: '#A1A1AA' },
   chipTextActive: { color: '#FFFFFF' },
   row: { flexDirection: 'row', gap: 12 },
   col: { flex: 1 },
-  submitButton: { backgroundColor: '#FF6B35', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, borderWidth: 2, borderColor: '#E55A2B', shadowColor: '#FF6B35', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 },
+  submitButton: { backgroundColor: '#F97316', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, borderWidth: 2, borderColor: '#EA6C0A', shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' },
 });

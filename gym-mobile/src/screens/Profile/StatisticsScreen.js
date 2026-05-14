@@ -1,4 +1,4 @@
-// src/screens/Profile/StatisticsScreen.js
+﻿// src/screens/Profile/StatisticsScreen.js
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useDatabase } from '../../context/DatabaseContext';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -153,18 +154,18 @@ export default function StatisticsScreen({ navigation }) {
             style={styles.navButton}
             onPress={() => setSelectedDate(new Date(currentYear, currentMonth - 1, 1))}
           >
-            <Text style={styles.navButtonText}>‹</Text>
+            <Ionicons name="chevron-back" size={18} color="#F97316" />
           </TouchableOpacity>
-          
+
           <Text style={styles.monthTitle}>
             {monthNames[currentMonth]} {currentYear}
           </Text>
-          
+
           <TouchableOpacity
             style={styles.navButton}
             onPress={() => setSelectedDate(new Date(currentYear, currentMonth + 1, 1))}
           >
-            <Text style={styles.navButtonText}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color="#F97316" />
           </TouchableOpacity>
         </View>
 
@@ -188,6 +189,7 @@ export default function StatisticsScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <Ionicons name="stats-chart" size={48} color="#F97316" style={{ marginBottom: 14 }} />
         <Text style={styles.loadingText}>Cargando estadísticas...</Text>
       </View>
     );
@@ -197,19 +199,20 @@ export default function StatisticsScreen({ navigation }) {
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>← Volver</Text>
+          <Ionicons name="chevron-back" size={20} color="#F97316" />
+          <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>📊 Estadísticas</Text>
+        <Text style={styles.title}>Estadísticas</Text>
       </View>
 
       {/* Estadísticas del mes */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>💰</Text>
+          <Ionicons name="cash-outline" size={48} color="#F97316" style={{ marginRight: 16 }} />
           <View style={styles.statInfo}>
             <Text style={styles.statValue}>${(monthlyStats?.totalIngresos || 0).toLocaleString()}</Text>
             <Text style={styles.statLabel}>Ingresos del Mes</Text>
@@ -253,7 +256,7 @@ export default function StatisticsScreen({ navigation }) {
         
         <View style={styles.dayDetailCard}>
           <View style={styles.dayDetailHeader}>
-            <Text style={styles.dayDetailIcon}>💵</Text>
+            <Ionicons name="cash-outline" size={32} color="#F97316" style={{ marginRight: 12 }} />
             <View>
               <Text style={styles.dayIncomeValue}>${dailyIncome.toLocaleString()}</Text>
               <Text style={styles.dayIncomeLabel}>Ingresos del día</Text>
@@ -276,17 +279,17 @@ export default function StatisticsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0F0F0F',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#0F0F0F',
   },
   loadingText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#A1A1AA',
     fontWeight: '500',
   },
   
@@ -300,13 +303,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 3,
-    borderBottomColor: '#FF6B35',  // Naranja O2
+    borderBottomColor: '#F97316',  // Naranja O2
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 8,
+    gap: 2,
   },
   backButtonText: {
-    color: '#FF6B35',  // Naranja O2
+    color: '#F97316',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -323,24 +329,20 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   statCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     borderRadius: 16,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#FF6B35',
+    shadowColor: '#F97316',
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#FFE5DC',
+    borderColor: '#2C2C2E',
     borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',  // Naranja O2
-  },
-  statIcon: {
-    fontSize: 48,
-    marginRight: 16,
+    borderLeftColor: '#F97316',  // Naranja O2
   },
   statInfo: {
     flex: 1,
@@ -348,12 +350,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FF6B35',  // Naranja O2
+    color: '#F97316',  // Naranja O2
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
   },
   
   statsRow: {
@@ -362,28 +364,28 @@ const styles = StyleSheet.create({
   },
   miniStatCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#FF6B35',
+    shadowColor: '#F97316',
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#FFE5DC',
+    borderColor: '#2C2C2E',
     borderTopWidth: 3,
-    borderTopColor: '#FF6B35',
+    borderTopColor: '#F97316',
   },
   miniStatValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FF6B35',  // Naranja O2
+    color: '#F97316',  // Naranja O2
     marginBottom: 4,
   },
   miniStatLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#A1A1AA',
     textAlign: 'center',
   },
 
@@ -395,19 +397,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
     marginBottom: 16,
   },
   calendarContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#FF6B35',
+    shadowColor: '#F97316',
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#FFE5DC',
+    borderColor: '#2C2C2E',
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -416,24 +418,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   navButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFF5F2',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2C2C2E',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFD4C4',
-  },
-  navButtonText: {
-    fontSize: 24,
-    color: '#FF6B35',  // Naranja O2
-    fontWeight: 'bold',
+    borderWidth: 1,
+    borderColor: '#3F3F46',
   },
   monthTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
   },
   
   weekDaysRow: {
@@ -448,7 +445,7 @@ const styles = StyleSheet.create({
   weekDayText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#A1A1AA',
   },
   
   calendarGrid: {
@@ -466,34 +463,34 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   selectedDay: {
-    backgroundColor: '#FF6B35',  // Naranja O2
+    backgroundColor: '#F97316',  // Naranja O2
   },
   todayDay: {
-    backgroundColor: '#FFE5DC',  // Naranja muy claro
+    backgroundColor: '#431407',  // Naranja muy claro
   },
   incomeDay: {
-    backgroundColor: '#FFF5F2',  // Naranja muy suave
+    backgroundColor: '#431407',  // Naranja muy suave
     borderWidth: 1,
-    borderColor: '#FFD4C4',
+    borderColor: '#2C2C2E',
   },
   dayText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A1A1A',  // Negro O2
+    color: '#F5F5F5',  // Negro O2
   },
   selectedDayText: {
     color: '#FFFFFF',
   },
   todayDayText: {
-    color: '#FF6B35',  // Naranja O2
+    color: '#F97316',  // Naranja O2
   },
   incomeDayText: {
-    color: '#E55A2B',  // Naranja oscuro
+    color: '#EA6C0A',  // Naranja oscuro
   },
   incomeText: {
     fontSize: 8,
     fontWeight: '600',
-    color: '#E55A2B',  // Naranja oscuro
+    color: '#EA6C0A',  // Naranja oscuro
     marginTop: 1,
   },
 
@@ -503,45 +500,41 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   dayDetailCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1C1C1E',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#FF6B35',
+    shadowColor: '#F97316',
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#FFE5DC',
+    borderColor: '#2C2C2E',
     borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',
+    borderLeftColor: '#F97316',
   },
   dayDetailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  dayDetailIcon: {
-    fontSize: 32,
-    marginRight: 12,
-  },
   dayIncomeValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FF6B35',  // Naranja O2
+    color: '#F97316',  // Naranja O2
     marginBottom: 2,
   },
   dayIncomeLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
   },
   noIncomeText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#A1A1AA',
     fontStyle: 'italic',
     textAlign: 'center',
   },
   incomeDescription: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#A1A1AA',
   },
 });
